@@ -121,8 +121,6 @@ function computeKPIs() {
     rows += `<tr><td${title}>${labels[key]} <span class="info" title="${tip}">?</span></td><td>${val}</td><td>${formulas[key]||''}</td></tr>`;
   });
   metricsEl.innerHTML += `<table class="metric-table">${rows}</table>`;
-
-  metricsEl.innerHTML += `<div class="metric-range"><label for=\"metric-range-select\">\u041f\u0435\u0440\u0438\u043e\u0434</label> <select id=\"metric-range-select\"><option value=\"day\">\u0414\u0435\u043d\u044c</option><option value=\"month\">\u041c\u0435\u0441\u044f\u0446</option><option value=\"year\">\u0413\u043e\u0434</option></select><div id=\"metric-range-table\"></div></div>`;
   document.getElementById('metric-range-select').addEventListener('change', e=>renderMetricRange(e.target.value));
   renderMetricRange('day');
 
