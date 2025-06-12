@@ -67,7 +67,6 @@ function renderDashboard() {
   drawEngagement();
   drawMembers();
   drawNetwork();
-  drawWords();
 }
 
 function computeKPIs() {
@@ -81,41 +80,31 @@ function computeKPIs() {
   kpiEl.innerHTML = `
     <h2>\u041a\u043b\u044e\u0447\u0435\u0432\u044b\u0435 \u043c\u0435\u0442\u0440\u0438\u043a\u0438</h2>
     <div class="kpi-cards">
-      <div class="kpi-card"><div class="num">${metrics.totalMessages}</div><div>\u0412\u0441\u0435\u0433\u043e \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0439 <span class="help" title="${kpiDesc.totalMessages}">?</span></div></div>
-      <div class="kpi-card"><div class="num">${metrics.usersCount}</div><div>\u0423\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0445 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u043e\u0432 <span class="help" title="${kpiDesc.usersCount}">?</span></div></div>
-      <div class="kpi-card"><div class="num">${metrics.dauAvg.toFixed(1)}</div><div>DAU <span class="help" title="${kpiDesc.dauAvg}">?</span></div></div>
-      <div class="kpi-card"><div class="num">${metrics.wauAvg.toFixed(1)}</div><div>WAU <span class="help" title="${kpiDesc.wauAvg}">?</span></div></div>
-      <div class="kpi-card"><div class="num">${metrics.mauAvg.toFixed(1)}</div><div>MAU <span class="help" title="${kpiDesc.mauAvg}">?</span></div></div>
-      <div class="kpi-card"><div class="num">${metrics.stickiness}%</div><div>Stickiness <span class="help" title="${kpiDesc.stickiness}">?</span></div></div>
-      <div class="kpi-card"><div class="num">${metrics.retention.d1}%</div><div>Avg D1 Retention <span class="help" title="${kpiDesc['retention.d1']}">?</span></div></div>
-      <div class="kpi-card"><div class="num">${metrics.retention.d7}%</div><div>Avg D7 Retention <span class="help" title="${kpiDesc['retention.d7']}">?</span></div></div>
-      <div class="kpi-card"><div class="num">${metrics.retention.d30}%</div><div>Avg D30 Retention <span class="help" title="${kpiDesc['retention.d30']}">?</span></div></div>
-      <div class="kpi-card"><div class="num">${metrics.retention.d90}%</div><div>Avg D90 Retention <span class="help" title="${kpiDesc['retention.d90']}">?</span></div></div>
-      <div class="kpi-card"><div class="num">${metrics.lifetime}</div><div>Avg Lifetime(days) <span class="help" title="${kpiDesc.lifetime}">?</span></div></div>
+      <div class="kpi-card"><div class="num">${metrics.totalMessages}</div><div>\u0412\u0441\u0435\u0433\u043e \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0439</div></div>
+      <div class="kpi-card"><div class="num">${metrics.usersCount}</div><div>\u0423\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0445 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u043e\u0432</div></div>
+      <div class="kpi-card"><div class="num">${metrics.dauAvg.toFixed(1)}</div><div>DAU</div></div>
+      <div class="kpi-card"><div class="num">${metrics.wauAvg.toFixed(1)}</div><div>WAU</div></div>
+      <div class="kpi-card"><div class="num">${metrics.mauAvg.toFixed(1)}</div><div>MAU</div></div>
+      <div class="kpi-card"><div class="num">${metrics.stickiness}%</div><div>Stickiness</div></div>
+      <div class="kpi-card"><div class="num">${metrics.retention.d1}%</div><div>Avg D1 Retention</div></div>
+      <div class="kpi-card"><div class="num">${metrics.retention.d7}%</div><div>Avg D7 Retention</div></div>
+      <div class="kpi-card"><div class="num">${metrics.retention.d30}%</div><div>Avg D30 Retention</div></div>
+      <div class="kpi-card"><div class="num">${metrics.retention.d90}%</div><div>Avg D90 Retention</div></div>
+      <div class="kpi-card"><div class="num">${metrics.lifetime}</div><div>Avg Lifetime(days)</div></div>
     </div>`;
 
   let rows = '<tr><th>\u041c\u0435\u0442\u0440\u0438\u043a\u0430</th><th>\u0417\u043d\u0430\u0447\u0435\u043d\u0438\u0435</th></tr>';
   metricOrder.forEach(key=>{
-    const info = desc[key] ? `<span class="help" title="${desc[key]}">?</span>` : '';
+    const title = desc[key] ? ` title="${desc[key]}"` : '';
     let val = metrics[key];
-    let names = '';
-    let cls = '';
-    if(key==='lowActivity'){names = metrics.lowActivityUsers.join(', '); cls='clickable';}
-    if(key==='active5'){names = metrics.active5Users.join(', '); cls='clickable';}
-    const namesHtml = names?`<div class="names">${names}</div>`:'';
-    rows += `<tr class="${cls}"><td>${labels[key]} ${info}</td><td><span class="num">${val}</span>${namesHtml}</td></tr>`;
+    if(key==='lowActivity') val = `${metrics.lowActivity} (${metrics.lowActivityUsers.join(', ')})`;
+    if(key==='active5') val = `${metrics.active5} (${metrics.active5Users.join(', ')})`;
+    rows += `<tr><td${title}>${labels[key]}</td><td>${val}</td></tr>`;
   });
   kpiEl.innerHTML += `<table class="metric-table">${rows}</table>`;
-  document.querySelectorAll('.metric-table tr.clickable').forEach(tr=>{
-    tr.addEventListener('click',()=>{
-      const n = tr.querySelector('.names');
-      if(n) n.style.display = n.style.display==='block'?'none':'block';
-    });
-  });
 
-  kpiEl.innerHTML += `<div class="metric-range"><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id="metric-range"><option value="day">\u0414\u0435\u043d\u044c</option><option value="week">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value="month">\u041c\u0435\u0441\u044f\u0446</option></select></label> <label>\u041c\u0435\u0442\u0440\u0438\u043a\u0430 <select id="metric-select"></select></label><div class="chart-container"><canvas id="metric-chart"></canvas></div></div>`;
+  kpiEl.innerHTML += `<div class="metric-range"><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id="metric-range"><option value="day">\u0414\u0435\u043d\u044c</option><option value="week">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value="month">\u041c\u0435\u0441\u044f\u0446</option></select></label><div id="metric-range-table"></div></div>`;
   document.getElementById('metric-range').addEventListener('change', e=>renderMetricRange(e.target.value));
-  document.getElementById('metric-select').addEventListener('change', e=>renderMetricChart(e.target.value));
   renderMetricRange('day');
 }
 
@@ -195,7 +184,6 @@ function drawActivity() {
 
 function drawEngagement() {
   const reactions = {};
-  const reactionUsers = {};
   let replyCount = 0;
   const dailyReplies = {};
   const dailyReactions = {};
@@ -203,9 +191,6 @@ function drawEngagement() {
     if (m.reactions) {
       m.reactions.forEach(r => {
         reactions[r.reaction] = (reactions[r.reaction] || 0) + 1;
-        const u = m.from || 'Unknown';
-        reactionUsers[r.reaction] = reactionUsers[r.reaction] || {};
-        reactionUsers[r.reaction][u] = (reactionUsers[r.reaction][u] || 0) + 1;
         const day = m.date.slice(0,10);
         dailyReactions[day] = (dailyReactions[day] || 0) + 1;
       });
@@ -252,14 +237,6 @@ function drawEngagement() {
     },
     options: { scales: { x: { stacked: true }, y: { stacked: false } } }
   });
-
-  const popular = Object.entries(reactions).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  let rows = '<tr><th>Reaction</th><th>Count</th><th>Top User</th></tr>';
-  popular.forEach(([r,c])=>{
-    const topUser = Object.entries(reactionUsers[r]).sort((a,b)=>b[1]-a[1])[0][0];
-    rows += `<tr><td>${r}</td><td>${c}</td><td>${topUser}</td></tr>`;
-  });
-  el.innerHTML += `<table class="edge-table">${rows}</table>`;
 }
 
 function drawMembers() {
@@ -295,13 +272,17 @@ function drawMembers() {
 
 function drawNetwork(){
   const el = document.getElementById('network');
-  el.innerHTML = '<h2>Reply Network</h2><div id="network-graph"></div>';
-  const nodesMap = {};
-  window.edgeList.forEach(e=>{nodesMap[e.from]=true; nodesMap[e.to]=true;});
-  const nodes = Object.keys(nodesMap).map((n,i)=>({id:i,label:n}));
-  const idMap = {}; nodes.forEach(n=>{idMap[n.label]=n.id;});
-  const edges = window.edgeList.map(e=>({from:idMap[e.from],to:idMap[e.to],value:e.count,title:`${e.from}→${e.to}: ${e.count}`}));
-  new vis.Network(document.getElementById('network-graph'),{nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)},{physics:{stabilization:false}});
+  el.innerHTML = '<h2>Reply Network</h2>';
+  const table = document.createElement('table');
+  table.className = 'edge-table';
+  table.innerHTML = '<tr><th>From</th><th>To</th><th>Count</th></tr>';
+  window.edgeList.forEach(e=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${e.from}</td><td>${e.to}</td><td>${e.count}</td>`;
+    tr.title = `${e.from} → ${e.to}: ${e.count}`;
+    table.appendChild(tr);
+  });
+  el.appendChild(table);
 }
 
 function renderHorizontalBar(container, labels, data, title) {
@@ -438,20 +419,6 @@ const metricLabels = {
   active5:'5+ \u0441\u0432\u044f\u0437\u0435\u0439'
 };
 
-const kpiDesc = {
-  totalMessages:'\u041e\u0431\u0449\u0435\u0435 \u0447\u0438\u0441\u043b\u043e \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0439 \u0432 \u0432\u044b\u0431\u043e\u0440\u043a\u0435',
-  usersCount:'\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0443\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0445 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u043e\u0432',
-  dauAvg:'\u0421\u0440\u0435\u0434\u043d\u0435\u0435 \u0447\u0438\u0441\u043b\u043e \u0430\u043a\u0442\u0438\u0432\u043d\u044b\u0445 \u0432 \u0434\u0435\u043d\u044c',
-  wauAvg:'\u0421\u0440\u0435\u0434\u043d\u0435\u0435 \u0447\u0438\u0441\u043b\u043e \u0430\u043a\u0442\u0438\u0432\u043d\u044b\u0445 \u0432 \u043d\u0435\u0434\u0435\u043b\u044e',
-  mauAvg:'\u0421\u0440\u0435\u0434\u043d\u0435\u0435 \u0447\u0438\u0441\u043b\u043e \u0430\u043a\u0442\u0438\u0432\u043d\u044b\u0445 \u0432 \u043c\u0435\u0441\u044f\u0446',
-  stickiness:'DAU/MAU \u043f\u043e\u043a\u0430\u0437\u0430\u0442\u0435\u043b\u044c \u0432\u043e\u0432\u043b\u0435\u0447\u0435\u043d\u043d\u043e\u0441\u0442\u0438',
-  'retention.d1':'D1 \u0440\u0435\u0442\u0435\u043d\u0448\u043d',
-  'retention.d7':'D7 \u0440\u0435\u0442\u0435\u043d\u0448\u043d',
-  'retention.d30':'D30 \u0440\u0435\u0442\u0435\u043d\u0448\u043d',
-  'retention.d90':'D90 \u0440\u0435\u0442\u0435\u043d\u0448\u043d',
-  lifetime:'\u0421\u0440\u0435\u0434\u043d\u044f\u044f \u0434\u043b\u0438\u0442\u0435\u043b\u044c\u043d\u043e\u0441\u0442\u044c \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0435\u0439 \u0432 \u0434\u043d\u044f\u0445'
-};
-
 const metricDesc = {
   avgThreadLifetime:'\u0421\u0440\u0435\u0434\u043d\u0435\u0435 \u0432\u0440\u0435\u043c\u044f \u043c\u0435\u0436\u0434\u0443 \u043f\u0435\u0440\u0432\u044b\u043c \u0438 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u043c \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435\u043c \u0432 \u0432\u0435\u0442\u043a\u0435',
   threadCount:'\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0432\u0435\u0442\u043e\u043a \u0441 \u043c\u0438\u043d\u0438\u043c\u0443\u043c \u0434\u0432\u0443\u043c\u044f \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f\u043c\u0438',
@@ -554,55 +521,14 @@ function computeMetrics(msgs){
 
 function renderMetricRange(range){
   const groups = range==='day'?groupByDay(filteredMessages):range==='week'?groupByWeek(filteredMessages):groupByMonth(filteredMessages);
-  window.metricPeriods = Object.keys(groups).sort();
-  window.metricStats = window.metricPeriods.map(p=>computeMetrics(groups[p]));
-  const select = document.getElementById('metric-select');
-  if(select){
-    select.innerHTML = metricOrder.map(k=>`<option value="${k}">${metricLabels[k]}</option>`).join('');
-  }
-  renderMetricChart(select.value || metricOrder[0]);
-}
-
-function renderMetricChart(key){
-  const data = window.metricStats.map(s=>s[key]);
-  if(charts.metricRange) charts.metricRange.destroy();
-  charts.metricRange = new Chart(document.getElementById('metric-chart'),{
-    type:'line',
-    data:{labels:window.metricPeriods,datasets:[{label:metricLabels[key],data}]},
-    options:{responsive:true,maintainAspectRatio:false}
+  const periods = Object.keys(groups).sort().slice(-10);
+  const stats = periods.map(p=>({p, m:computeMetrics(groups[p])}));
+  const container = document.getElementById('metric-range-table');
+  if(!container) return;
+  let header = '<tr><th>\u041c\u0435\u0442\u0440\u0438\u043a\u0430</th>' + periods.map(p=>`<th>${p}</th>`).join('') + '</tr>';
+  let rows = '';
+  metricOrder.forEach(key=>{
+    rows += `<tr><td>${metricLabels[key]}</td>` + stats.map(s=>`<td>${s.m[key]}</td>`).join('') + '</tr>';
   });
-}
-
-function drawWords(){
-  const el = document.getElementById('words');
-  if(!el) return;
-  el.innerHTML = `<h2>Popular Words</h2><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id="words-range"><option value="day">\u0414\u0435\u043d\u044c</option><option value="week">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value="month">\u041c\u0435\u0441\u044f\u0446</option></select></label><div id="words-table"></div>`;
-  document.getElementById('words-range').addEventListener('change',e=>renderWords(e.target.value));
-  renderWords('month');
-}
-
-const stopWords = new Set(['и','в','во','не','что','он','на','я','с','со','как','а','то','все','она','так','его','но','да','ты','к','у','же','вы','за','бы','по','ее','мне','было','вот','от','меня','еще','нет','о','из','ему','теперь','когда','даже','ну','ли','если','уже','или','ни','быть','был','него','до','вас','нибудь','ваш','твой','есть','the','and','to','of','in','for','with','on','at','by','this','that','it','from','or','as','be']);
-
-function renderWords(range){
-  const groups = range==='day'?groupByDay(filteredMessages):range==='week'?groupByWeek(filteredMessages):groupByMonth(filteredMessages);
-  const periods = Object.keys(groups).sort().slice(-5);
-  const container = document.getElementById('words-table');
-  container.innerHTML = '';
-  periods.forEach(p=>{
-    const words = countWords(groups[p]);
-    const top = Object.entries(words).sort((a,b)=>b[1]-a[1]).slice(0,10);
-    let rows = '<tr><th>Word</th><th>Count</th></tr>' + top.map(([w,c])=>`<tr><td>${w}</td><td>${c}</td></tr>`).join('');
-    container.innerHTML += `<h3>${p}</h3><table class="edge-table">${rows}</table>`;
-  });
-}
-
-function countWords(msgs){
-  const words = {};
-  msgs.forEach(m=>{
-    const t = (typeof m.text==='string'?m.text: Array.isArray(m.text)?m.text.map(x=>typeof x==='string'?x:x.text||'').join(''):'').toLowerCase();
-    t.replace(/[^\p{L}\p{N}\s]/gu,'').split(/\s+/).forEach(w=>{
-      if(w.length>2 && !stopWords.has(w)) words[w]= (words[w]||0)+1;
-    });
-  });
-  return words;
+  container.innerHTML = `<table class="period-metrics">${header}${rows}</table>`;
 }
