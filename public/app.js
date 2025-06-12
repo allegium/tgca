@@ -13,9 +13,7 @@ function toggleNames(key){
   if(el) el.classList.toggle('hidden');
 }
 
-document.getElementById('upload-btn').addEventListener('click', () => {
-  document.getElementById('file-input').click();
-});
+
 
 document.getElementById('file-input').addEventListener('change', handleFiles);
 
@@ -75,11 +73,11 @@ function applyFilters() {
 function renderDashboard() {
   computeKPIs();
   drawActivity();
-  drawEngagement();
   drawMembers();
   drawNetwork();
   drawWords();
 }
+
 
 function computeKPIs() {
   const metrics = computeMetrics(filteredMessages);
@@ -88,9 +86,10 @@ function computeKPIs() {
 
   const labels = metricLabels;
   const desc = metricDesc;
+  const formulas = metricFormulas;
   const kpiEl = document.getElementById('kpi');
   kpiEl.innerHTML = `
-    <h2>\u041a\u043b\u044e\u0447\u0435\u0432\u044b\u0435 \u043c\u0435\u0442\u0440\u0438\u043a\u0438 <span class="info" title=\"\u041f\u0440\u0435\u0434\u0441\u0442\u0430\u0432\u043b\u0435\u043d\u044b \u043e\u0441\u043d\u043e\u0432\u043d\u044b\u0435 \u043f\u043e\u043a\u0430\u0437\u0430\u0442\u0435\u043b\u0438 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0447\u0430\u0442\u0430.\">?</span></h2>
+    <h2>\u041a\u043b\u044e\u0447\u0435\u0432\u044b\u0435 \u043c\u0435\u0442\u0440\u0438\u043a\u0438</h2>
     <div class="kpi-cards">
       <div class="kpi-card"><div class="num">${metrics.totalMessages}</div><div>\u0412\u0441\u0435\u0433\u043e \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0439</div></div>
       <div class="kpi-card"><div class="num">${metrics.usersCount}</div><div>\u0423\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0445 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u043e\u0432</div></div>
@@ -105,31 +104,33 @@ function computeKPIs() {
       <div class="kpi-card"><div class="num">${metrics.lifetime}</div><div>Avg Lifetime(days)</div></div>
     </div>`;
 
-  let rows = '<tr><th>\u041c\u0435\u0442\u0440\u0438\u043a\u0430</th><th>\u0417\u043d\u0430\u0447\u0435\u043d\u0438\u0435</th></tr>';
+  const metricsEl = document.getElementById('metrics');
+  metricsEl.innerHTML = '<h2>\u041c\u0435\u0442\u0440\u0438\u043a\u0438</h2>';
+
+  let rows = '<tr><th>\u041c\u0435\u0442\u0440\u0438\u043a\u0430</th><th>\u0417\u043d\u0430\u0447\u0435\u043d\u0438\u0435</th><th>\u0424\u043e\u0440\u043c\u0443\u043b\u0430</th></tr>';
   metricOrder.forEach(key=>{
     const title = desc[key] ? ` title="${desc[key]}"` : '';
     let val = metrics[key];
     if(key==='lowActivity'){
-      val = `<span class="clickable" onclick=\"toggleNames('lowActivity')\">${metrics.lowActivity}</span><div id="lowActivity-names" class="hidden">${metrics.lowActivityUsers.join(', ')}</div>`;
+      val = `<span class="clickable" onclick=\"toggleNames('lowActivity')\">${metrics.lowActivity}</span><div id=\"lowActivity-names\" class=\"hidden\">${metrics.lowActivityUsers.join(', ')}</div>`;
     }
     if(key==='active5'){
-      val = `<span class="clickable" onclick=\"toggleNames('active5')\">${metrics.active5}</span><div id="active5-names" class="hidden">${metrics.active5Users.join(', ')}</div>`;
+      val = `<span class="clickable" onclick=\"toggleNames('active5')\">${metrics.active5}</span><div id=\"active5-names\" class=\"hidden\">${metrics.active5Users.join(', ')}</div>`;
     }
-    rows += `<tr><td${title}>${labels[key]} <span class="info" title="${desc[key]||''}">?</span></td><td>${val}</td></tr>`;
+    rows += `<tr><td${title}>${labels[key]} <span class="info" title="${desc[key]||''}">?</span></td><td>${val}</td><td>${formulas[key]||''}</td></tr>`;
   });
-  kpiEl.innerHTML += `<table class="metric-table">${rows}</table>`;
+  metricsEl.innerHTML += `<table class="metric-table">${rows}</table>`;
 
-  kpiEl.innerHTML += `<div class="metric-range"><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id="metric-range"><option value="day">\u0414\u0435\u043d\u044c</option><option value="week">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value="month">\u041c\u0435\u0441\u044f\u0446</option></select></label><div id="metric-range-table"></div></div>`;
+  metricsEl.innerHTML += `<div class="metric-range"><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id=\"metric-range\"><option value=\"day\">\u0414\u0435\u043d\u044c</option><option value=\"week\">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value=\"month\">\u041c\u0435\u0441\u044f\u0446</option></select></label><div id=\"metric-range-table\"></div></div>`;
   document.getElementById('metric-range').addEventListener('change', e=>renderMetricRange(e.target.value));
   renderMetricRange('day');
 
-  let metricOptions = metricOrder.map(k=>`<option value="${k}">${labels[k]}</option>`).join('');
-  kpiEl.innerHTML += `<div class="chart-container"><label>\u041c\u0435\u0442\u0440\u0438\u043a\u0430 <select id="metric-select">${metricOptions}</select></label><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id="metric-chart-range"><option value="day">\u0414\u0435\u043d\u044c</option><option value="week">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value="month">\u041c\u0435\u0441\u044f\u0446</option></select></label><canvas id="metric-chart"></canvas></div>`;
+  let metricOptions = metricOrder.map(k=>`<option value=\"${k}\">${labels[k]}</option>`).join('');
+  metricsEl.innerHTML += `<div class="chart-container"><label>\u041c\u0435\u0442\u0440\u0438\u043a\u0430 <select id=\"metric-select\">${metricOptions}</select></label><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id=\"metric-chart-range\"><option value=\"day\">\u0414\u0435\u043d\u044c</option><option value=\"week\">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value=\"month\">\u041c\u0435\u0441\u044f\u0446</option></select></label><canvas id=\"metric-chart\"></canvas></div>`;
   document.getElementById('metric-select').addEventListener('change',()=>renderMetricChart());
   document.getElementById('metric-chart-range').addEventListener('change',()=>renderMetricChart());
   renderMetricChart();
 }
-
 function drawActivity() {
   const daily = groupByDay(filteredMessages);
   const dates = Object.keys(daily).sort();
@@ -204,93 +205,6 @@ function drawActivity() {
   heatmap.appendChild(table);
 }
 
-function drawEngagement() {
-  const reactions = {};
-  const reactionUsers = {};
-  let replyCount = 0;
-  const dailyReplies = {};
-  const dailyReactions = {};
-  const msgPerUser = {};
-  const reactPerUser = {};
-  filteredMessages.forEach(m => {
-    const u = m.from || 'Unknown';
-    msgPerUser[u] = (msgPerUser[u]||0)+1;
-    if (m.reactions) {
-      m.reactions.forEach(r => {
-        reactions[r.reaction] = (reactions[r.reaction] || 0) + 1;
-        reactionUsers[r.reaction] = reactionUsers[r.reaction] || {};
-        reactionUsers[r.reaction][u] = (reactionUsers[r.reaction][u] || 0) + 1;
-        const actor = r.actor || u;
-        reactPerUser[actor] = (reactPerUser[actor]||0)+1;
-        const day = m.date.slice(0,10);
-        dailyReactions[day] = (dailyReactions[day] || 0) + 1;
-      });
-    }
-    if (m.reply_to_message_id) {
-      replyCount++;
-      const day = m.date.slice(0,10);
-      dailyReplies[day] = (dailyReplies[day] || 0) + 1;
-    }
-  });
-  const totalReactions = Object.values(reactions).reduce((a,b)=>a+b,0);
-  const engagementRate = ((totalReactions + replyCount) / filteredMessages.length * 100).toFixed(1);
-
-  const userPie = {messages:msgPerUser,reactions:reactPerUser};
-
-  const days = Array.from(new Set([...Object.keys(dailyReplies), ...Object.keys(dailyReactions)])).sort();
-  const repliesSeries = days.map(d => dailyReplies[d] || 0);
-  const reactionsSeries = days.map(d => dailyReactions[d] || 0);
-
-  const el = document.getElementById('engagement');
-  el.innerHTML = `<h2>Engagement <span class="info" title=\"\u0420\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u0435 \u0440\u0435\u0430\u043a\u0446\u0438\u0439 \u0438 \u043e\u0442\u0432\u0435\u0442\u043e\u0432\">?</span></h2>
-    <div class="chart-container"><canvas id="reaction-chart"></canvas></div>
-    <div class="chart-container"><canvas id="reply-chart"></canvas></div>
-    <div class="chart-container"><label>\u0422\u0438\u043f <select id="engage-type"><option value="messages">\u0421\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f</option><option value="reactions">\u0420\u0435\u0430\u043a\u0446\u0438\u0438</option></select></label><canvas id="engage-pie"></canvas></div>
-    <p>Engagement Rate: <strong>${engagementRate}%</strong></p>`;
-
-  if (charts.reactions) charts.reactions.destroy();
-  const rLabels = Object.keys(reactions);
-  const colors = rLabels.map((_,i)=>`hsl(${i*40},70%,60%)`);
-  charts.reactions = new Chart(document.getElementById('reaction-chart'), {
-    type: 'doughnut',
-    data: {
-      labels: rLabels,
-      datasets: [{ data: Object.values(reactions), backgroundColor: colors }]
-    }
-  });
-
-  if (charts.replies) charts.replies.destroy();
-  charts.replies = new Chart(document.getElementById('reply-chart'), {
-    type: 'bar',
-    data: {
-      labels: days,
-      datasets: [
-        { label: 'Replies', data: repliesSeries, backgroundColor: '#03a9f4' },
-        { label: 'Reactions', data: reactionsSeries, backgroundColor: '#ff9800' }
-      ]
-    },
-    options: { scales: { x: { stacked: true }, y: { stacked: false } } }
-  });
-
-  function updatePie(){
-    const type=document.getElementById('engage-type').value;
-    const stats=userPie[type];
-    const labels=Object.keys(stats);
-    const data=Object.values(stats);
-    const colors=labels.map((_,i)=>`hsl(${i*30},70%,60%)`);
-    if(charts.engagePie) charts.engagePie.destroy();
-    charts.engagePie=new Chart(document.getElementById('engage-pie'),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors}]}});
-  }
-  document.getElementById('engage-type').addEventListener('change',updatePie);
-  updatePie();
-
-  const tableRows = Object.entries(reactions).sort((a,b)=>b[1]-a[1]).map(([r,c])=>{
-    const users = reactionUsers[r];
-    const topUser = Object.entries(users).sort((a,b)=>b[1]-a[1])[0][0];
-    return `<tr><td>${r}</td><td>${c}</td><td>${topUser}</td></tr>`;
-  }).join('');
-  el.innerHTML += `<table class="metric-table"><tr><th>Reaction</th><th>Count</th><th>Top User</th></tr>${tableRows}</table>`;
-}
 
 function drawMembers() {
   const userStats = {};
@@ -476,6 +390,28 @@ const metricDesc = {
   active5:'\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0438, \u0438\u043c\u0435\u044e\u0449\u0438\u0435 \u0431\u043e\u043b\u0435\u0435 5 \u0441\u0432\u044f\u0437\u0435\u0439'
 };
 
+const metricFormulas = {
+  mediaCount:'count(messages with media_type)',
+  linkCount:'count(messages with link)',
+  avgChars:'sum(chars)/messages',
+  avgWords:'sum(words)/messages',
+  longMsgs:'count(length>500)',
+  emojiFreq:'total emojis',
+  forwarded:'count(forwarded_from)',
+  replyMsgs:'count(reply_to_message_id)',
+  mentionCount:'total @mentions',
+  questionCount:'count(text contains ?) ',
+  avgTimeFirstReply:'avg minutes to first reply',
+  shareNoReplies:'no reply msgs/total*100%',
+  avgThreadDepth:'avg msgs per thread',
+  avgThreadLifetime:'avg minutes thread active',
+  threadCount:'threads with >=2 msgs',
+  density:'uniquePairs/(users*(users-1))',
+  uniquePairs:'distinct reply pairs',
+  lowActivity:'users with <=2 msgs',
+  active5:'users with >=5 links'
+};
+
 const metricOrder = ['mediaCount','linkCount','avgChars','avgWords','longMsgs','emojiFreq','forwarded','replyMsgs','mentionCount','questionCount','avgTimeFirstReply','shareNoReplies','avgThreadDepth','avgThreadLifetime','threadCount','density','uniquePairs','lowActivity','active5'];
 
 function computeMetrics(msgs){
@@ -596,11 +532,20 @@ function renderMetricChart(){
 
 function drawWords(){
   const stop=['и','в','во','не','что','он','она','они','я','ты','мы','вы','а','но','как','так','его','её','их','же','бы','для','за','по','из','у','к','о','с','на','то','это','этот','там','тут','да','нет'];
+  const noun=/(а|я|о|е|ы|и|у|ю|ь|ей|ой|ам|ям|ом|ем|ах|ях)$/;
+  const adj=/(ый|ий|ой|ая|яя|ое|ее|ые|ие|ого|его|ому|ему|ым|им|ых|их)$/;
+  const verb=/(ать|ять|еть|ить|утся|ется|ишь|ешь|ет|ют|ит|ят|ал|ил|ала|ила|али|или)$/;
+  const adv=/(о|у)$/;
+  const part=/(вший|ющий|емый|енный|ённый|анный|ящий|имый)$/;
+  const ger=/(я|в|ши|ючи)$/;
+  function allowed(w){
+    return noun.test(w)||adj.test(w)||verb.test(w)||adv.test(w)||part.test(w)||ger.test(w);
+  }
   const freq={};
   filteredMessages.forEach(m=>{
     const words=extractText(m.text).toLowerCase().match(/\b[\p{L}]{3,}\b/gu);
     if(!words) return;
-    words.forEach(w=>{if(!stop.includes(w)) freq[w]=(freq[w]||0)+1;});
+    words.forEach(w=>{if(!stop.includes(w)&&allowed(w)) freq[w]=(freq[w]||0)+1;});
   });
   const top=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,20);
   const el=document.getElementById('words');
