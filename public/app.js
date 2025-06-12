@@ -248,24 +248,17 @@ function drawNetwork(){
   window.edgeList.forEach(e=>{nodes[e.from]=true;nodes[e.to]=true;});
   const dataNodes = Object.keys(nodes).map((n,i)=>({id:i,label:n}));
   const idMap = Object.fromEntries(dataNodes.map(n=>[n.label,n.id]));
-  const dataEdges = window.edgeList.map(e => ({
-    from: idMap[e.from],
-    to: idMap[e.to],
-    value: e.count,
-    title: `${e.from}→${e.to}: ${e.count}`
-  }));
-
-  const options = {
-    nodes: {
-      shape: "dot",
-      size: 20,
-      color: "#4682b4",
-      font: { size: 16, color: "#000" }
-    },
-    edges: { color: { color: "#999", highlight: "#f00" }, width: 2 },
-    physics: { barnesHut: { springLength: 250 } },
-    interaction: { hover: true }
+  const dataEdges = window.edgeList.map(e=>({from:idMap[e.from],to:idMap[e.to],value:e.count,title:`${e.from}→${e.to}: ${e.count}`}));
+<<<<<<< bznz8k-codex/update-metric-formulas,-add-hover-explanations
+  const options={
+    nodes:{shape:"dot",size:20,color:"#4682b4",font:{size:16,color:"#000"}},
+    edges:{color:{color:"#999",highlight:"#f00"},width:2},
+    physics:{barnesHut:{springLength:250}},
+    interaction:{hover:true}
   };
+=======
+  const options={nodes:{shape:"dot",size:15,font:{size:14}},edges:{color:{color:"#555"},width:2},physics:{barnesHut:{springLength:200}},interaction:{hover:true}};
+>>>>>>> main
   const net = new vis.Network(document.getElementById("network-chart"),{nodes:new vis.DataSet(dataNodes),edges:new vis.DataSet(dataEdges)},options);
 }
 
