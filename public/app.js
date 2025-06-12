@@ -122,8 +122,8 @@ function computeKPIs() {
   });
   metricsEl.innerHTML += `<table class="metric-table">${rows}</table>`;
 
-  metricsEl.innerHTML += `<div class="metric-range"><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id=\"metric-range\"><option value=\"day\">\u0414\u0435\u043d\u044c</option><option value=\"week\">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value=\"month\">\u041c\u0435\u0441\u044f\u0446</option></select></label><div id=\"metric-range-table\"></div></div>`;
-  document.getElementById('metric-range').addEventListener('change', e=>renderMetricRange(e.target.value));
+  metricsEl.innerHTML += `<div class="metric-range"><label for=\"metric-range-select\">\u041f\u0435\u0440\u0438\u043e\u0434</label> <select id=\"metric-range-select\"><option value=\"day\">\u0414\u0435\u043d\u044c</option><option value=\"week\">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value=\"month\">\u041c\u0435\u0441\u044f\u0446</option></select><div id=\"metric-range-table\"></div></div>`;
+  document.getElementById('metric-range-select').addEventListener('change', e=>renderMetricRange(e.target.value));
   renderMetricRange('day');
 
   let metricOptions = metricOrder.map(k=>`<option value=\"${k}\">${labels[k]}</option>`).join('');
@@ -221,21 +221,11 @@ function drawMembers() {
   const el = document.getElementById('members');
   el.innerHTML = `<h2>Member Analysis</h2>
     <div id="top-msg"></div>
-    <div id="top-eng"></div>
-    <div class="chart-container"><canvas id="scatter"></canvas></div>`;
+    <div id="top-eng"></div>`;
 
   renderHorizontalBar('top-msg', topMsg.map(e => e[0]), topMsg.map(e=>e[1].messages), 'Top 10 by Messages');
   renderHorizontalBar('top-eng', topEng.map(e => e.user), topEng.map(e=>e.val.toFixed(2)), 'Top 10 by Engagement');
 
-  const scatterData = Object.entries(userStats).map(([u,s])=>({x:s.messages,y:s.reactions}));
-  if (charts.scatter) charts.scatter.destroy();
-  charts.scatter = new Chart(document.getElementById('scatter'), {
-    type: 'scatter',
-    data: {
-      datasets: [{ label: 'User Activity', data: scatterData }]
-    },
-    options: { scales: { x: { title:{display:true,text:'Messages'}}, y:{ title:{display:true,text:'Reactions'} } } }
-  });
 }
 
 function drawNetwork(){
@@ -566,7 +556,7 @@ function drawWords(){
   }
   const freq={};
   filteredMessages.forEach(m=>{
-    const words=extractText(m.text).toLowerCase().match(/\b[\p{L}]{3,}\b/gu);
+    const words=extractText(m.text).toLowerCase().match(/[a-zA-Z\u0400-\u04FF]{3,}/g);
     if(!words) return;
     words.forEach(w=>{if(!stop.includes(w)&&allowed(w)) freq[w]=(freq[w]||0)+1;});
   });
