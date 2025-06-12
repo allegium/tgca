@@ -25,6 +25,7 @@ uploadArea.addEventListener('drop', (e) => {
 function handleFiles(e) {
   const file = e.target.files[0];
   if (file) handleFile(file);
+  e.target.value = '';
 }
 
 function handleFile(file) {
@@ -40,6 +41,7 @@ function handleFile(file) {
     }
   };
   reader.readAsText(file);
+  document.getElementById('file-input').value = '';
 }
 
 document.getElementById('apply-filters').addEventListener('click', applyFilters);
