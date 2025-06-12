@@ -11,11 +11,12 @@ A single-page web app for uploading Telegram chat export JSON files and visualiz
 ## Quick Start
 
 1. Clone this repository or download it as a ZIP and extract it.
-2. Open a terminal in the project directory.
-3. Run `npm install` to install dependencies.
-4. Start the server with `node server.js`.
-5. Open `http://localhost:3000` in your browser.
-6. Upload your Telegram JSON export to see the dashboard.
+2. If you just want to run the site without typing any commands, double click
+   `start.bat` on Windows or run `start.sh` on macOS/Linux. The script will
+   install dependencies (first run requires an internet connection) and launch
+   the server automatically.
+3. The server will be available at `http://localhost:3000`.
+4. Upload your Telegram JSON export to see the dashboard.
 
 ## Structure
 
