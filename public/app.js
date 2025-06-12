@@ -68,130 +68,42 @@ function renderDashboard() {
 }
 
 function computeKPIs() {
-  const totalMessages = filteredMessages.length;
-  const users = new Set(filteredMessages.map(m => m.from_id || m.from));
-  const daily = groupByDay(filteredMessages);
-  const dau = Object.values(daily).map(day => new Set(day.map(m => m.from_id || m.from)).size);
-  const wau = groupByWeek(filteredMessages);
-  const mau = groupByMonth(filteredMessages);
-  const dauAvg = avg(dau);
-  const wauAvg = avg(Object.values(wau).map(w => new Set(w.map(m => m.from_id || m.from)).size));
-  const mauAvg = avg(Object.values(mau).map(m => new Set(m.map(mes => mes.from_id || mes.from)).size));
-  const stickiness = mauAvg ? (dauAvg / mauAvg * 100).toFixed(1) : 0;
-  const retention = calcRetention2(filteredMessages);
-  const lifetime = calcLifetime();
+  const metrics = computeMetrics(filteredMessages);
+  window.edgeList = metrics.edgeList;
+  window.metrics = metrics;
 
-  const text = t => (typeof t === 'string' ? t : Array.isArray(t) ? t.map(p => typeof p === 'string' ? p : p.text || '').join('') : '');
-
-  const mediaCount = filteredMessages.filter(m => m.media_type).length;
-  const linkCount = filteredMessages.filter(m => /https?:\/\//i.test(text(m.text))).length;
-  const lengths = filteredMessages.map(m => text(m.text).length);
-  const wordLengths = filteredMessages.map(m => text(m.text).split(/\s+/).filter(Boolean).length);
-  const avgChars = avg(lengths).toFixed(1);
-  const avgWords = avg(wordLengths).toFixed(1);
-  const longMsgs = lengths.filter(l => l > 500).length;
-  const emojiFreq = filteredMessages.reduce((acc,m)=>acc+(text(m.text).match(/\p{Emoji}/gu)||[]).length,0);
-  const forwarded = filteredMessages.filter(m => m.forwarded_from).length;
-  const replyMsgs = filteredMessages.filter(m => m.reply_to_message_id).length;
-  const mentionCount = filteredMessages.reduce((acc,m)=>acc+(text(m.text).match(/@\w+/g)||[]).length,0);
-  const questionCount = filteredMessages.filter(m => text(m.text).includes('?')).length;
-
-  const msgById = {};
-  filteredMessages.forEach(m => { if(m.id) msgById[m.id]=m; });
-  const threadStats = {};
-  const repliedIds = new Set();
-  filteredMessages.forEach(m => {
-    if(m.reply_to_message_id && msgById[m.reply_to_message_id]){
-      repliedIds.add(m.reply_to_message_id);
-      const parent = msgById[m.reply_to_message_id];
-      const tid = m.reply_to_message_id;
-      const date = new Date(m.date);
-      if(!threadStats[tid]){
-        threadStats[tid] = {count:2, first:new Date(parent.date), firstReply:date, last:date};
-      } else {
-        threadStats[tid].count++;
-        if(date < threadStats[tid].firstReply) threadStats[tid].firstReply = date;
-        if(date > threadStats[tid].last) threadStats[tid].last = date;
-      }
-    }
-  });
-  const threadArr = Object.values(threadStats);
-  const avgThreadDepth = threadArr.length ? avg(threadArr.map(t=>t.count)).toFixed(1) : 0;
-  const avgThreadLifetime = threadArr.length ? avg(threadArr.map(t=>diffMinutes(t.first, t.last))).toFixed(1) : 0;
-  const avgTimeFirstReply = threadArr.length ? avg(threadArr.map(t=>diffMinutes(t.first, t.firstReply))).toFixed(1) : 0;
-  const msgsNoReplies = filteredMessages.filter(m => !repliedIds.has(m.id)).length;
-  const shareNoReplies = totalMessages ? (msgsNoReplies/totalMessages*100).toFixed(1) : 0;
-
-  const edges = {};
-  const userStats = {};
-  filteredMessages.forEach(m=>{
-    const u = m.from || 'Unknown';
-    userStats[u] = userStats[u] || {messages:0,replies:0,connections:new Set()};
-    userStats[u].messages++;
-  });
-  filteredMessages.forEach(m=>{
-    if(m.reply_to_message_id && msgById[m.reply_to_message_id]){
-      const from = m.from || 'Unknown';
-      const to = msgById[m.reply_to_message_id].from || 'Unknown';
-      const key = `${from}→${to}`;
-      edges[key] = (edges[key]||0)+1;
-      userStats[to].replies++;
-      userStats[from].connections.add(to);
-      userStats[to].connections.add(from);
-    }
-  });
-  const edgeList = Object.entries(edges).map(([k,v])=>{ const [f,t]=k.split('→'); return {from:f,to:t,count:v};});
-  const uniquePairs = edgeList.length;
-  const density = users.size>1 ? (uniquePairs/(users.size*(users.size-1))).toFixed(3) : 0;
-  const leaderCentrality = Object.entries(userStats).map(([u,s])=>({user:u,replies:s.replies})).sort((a,b)=>b.replies-a.replies).slice(0,5);
-  const lowActivity = Object.values(userStats).filter(s=>s.messages<=2).length;
-  const active5 = Object.values(userStats).filter(s=>s.connections.size>=5).length;
-
-  window.edgeList = edgeList;
-  window.metrics = {
-    mediaCount,linkCount,avgChars,avgWords,longMsgs,emojiFreq,forwarded,replyMsgs,
-    mentionCount,avgTimeFirstReply,shareNoReplies,avgThreadDepth,avgThreadLifetime,
-    uniquePairs,density,leaderCentrality,lowActivity,active5,questionCount
-  };
-
+  const labels = metricLabels;
+  const desc = metricDesc;
   const kpiEl = document.getElementById('kpi');
   kpiEl.innerHTML = `
-    <h2>Key Metrics</h2>
+    <h2>\u041a\u043b\u044e\u0447\u0435\u0432\u044b\u0435 \u043c\u0435\u0442\u0440\u0438\u043a\u0438</h2>
     <div class="kpi-cards">
-      <div class="kpi-card"><div class="num">${totalMessages}</div><div>Total Messages</div></div>
-      <div class="kpi-card"><div class="num">${users.size}</div><div>Unique Participants</div></div>
-      <div class="kpi-card"><div class="num">${dauAvg.toFixed(1)}</div><div>DAU</div></div>
-      <div class="kpi-card"><div class="num">${wauAvg.toFixed(1)}</div><div>WAU</div></div>
-      <div class="kpi-card"><div class="num">${mauAvg.toFixed(1)}</div><div>MAU</div></div>
-      <div class="kpi-card"><div class="num">${stickiness}%</div><div>Stickiness</div></div>
-      <div class="kpi-card"><div class="num">${retention.d1}%</div><div>Avg D1 Retention</div></div>
-      <div class="kpi-card"><div class="num">${retention.d7}%</div><div>Avg D7 Retention</div></div>
-      <div class="kpi-card"><div class="num">${retention.d30}%</div><div>Avg D30 Retention</div></div>
-      <div class="kpi-card"><div class="num">${retention.d90}%</div><div>Avg D90 Retention</div></div>
-      <div class="kpi-card"><div class="num">${lifetime}</div><div>Avg Lifetime(days)</div></div>
-    </div>
-    <table class="metric-table">
-      <tr><th>Metric</th><th>Value</th></tr>
-      <tr><td>Messages with media</td><td>${mediaCount}</td></tr>
-      <tr><td>Messages with links</td><td>${linkCount}</td></tr>
-      <tr><td>Average length (chars)</td><td>${avgChars}</td></tr>
-      <tr><td>Average length (words)</td><td>${avgWords}</td></tr>
-      <tr><td>Long messages >500</td><td>${longMsgs}</td></tr>
-      <tr><td>Emoji count</td><td>${emojiFreq}</td></tr>
-      <tr><td>Forwarded messages</td><td>${forwarded}</td></tr>
-      <tr><td>Reply messages</td><td>${replyMsgs}</td></tr>
-      <tr><td>User mentions</td><td>${mentionCount}</td></tr>
-      <tr><td>Questions</td><td>${questionCount}</td></tr>
-      <tr><td>Avg time to first reply (min)</td><td>${avgTimeFirstReply}</td></tr>
-      <tr><td>Share without replies</td><td>${shareNoReplies}%</td></tr>
-      <tr><td>Avg thread depth</td><td>${avgThreadDepth}</td></tr>
-      <tr><td>Avg thread lifetime (min)</td><td>${avgThreadLifetime}</td></tr>
-      <tr><td>Active threads</td><td>${threadArr.length}</td></tr>
-      <tr><td>Network density</td><td>${density}</td></tr>
-      <tr><td>Unique reply pairs</td><td>${uniquePairs}</td></tr>
-      <tr><td>Low activity users</td><td>${lowActivity}</td></tr>
-      <tr><td>Active users 5+ ties</td><td>${active5}</td></tr>
-    </table>`;
+      <div class="kpi-card"><div class="num">${metrics.totalMessages}</div><div>\u0412\u0441\u0435\u0433\u043e \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0439</div></div>
+      <div class="kpi-card"><div class="num">${metrics.usersCount}</div><div>\u0423\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0445 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u043e\u0432</div></div>
+      <div class="kpi-card"><div class="num">${metrics.dauAvg.toFixed(1)}</div><div>DAU</div></div>
+      <div class="kpi-card"><div class="num">${metrics.wauAvg.toFixed(1)}</div><div>WAU</div></div>
+      <div class="kpi-card"><div class="num">${metrics.mauAvg.toFixed(1)}</div><div>MAU</div></div>
+      <div class="kpi-card"><div class="num">${metrics.stickiness}%</div><div>Stickiness</div></div>
+      <div class="kpi-card"><div class="num">${metrics.retention.d1}%</div><div>Avg D1 Retention</div></div>
+      <div class="kpi-card"><div class="num">${metrics.retention.d7}%</div><div>Avg D7 Retention</div></div>
+      <div class="kpi-card"><div class="num">${metrics.retention.d30}%</div><div>Avg D30 Retention</div></div>
+      <div class="kpi-card"><div class="num">${metrics.retention.d90}%</div><div>Avg D90 Retention</div></div>
+      <div class="kpi-card"><div class="num">${metrics.lifetime}</div><div>Avg Lifetime(days)</div></div>
+    </div>`;
+
+  let rows = '<tr><th>\u041c\u0435\u0442\u0440\u0438\u043a\u0430</th><th>\u0417\u043d\u0430\u0447\u0435\u043d\u0438\u0435</th></tr>';
+  metricOrder.forEach(key=>{
+    const title = desc[key] ? ` title="${desc[key]}"` : '';
+    let val = metrics[key];
+    if(key==='lowActivity') val = `${metrics.lowActivity} (${metrics.lowActivityUsers.join(', ')})`;
+    if(key==='active5') val = `${metrics.active5} (${metrics.active5Users.join(', ')})`;
+    rows += `<tr><td${title}>${labels[key]}</td><td>${val}</td></tr>`;
+  });
+  kpiEl.innerHTML += `<table class="metric-table">${rows}</table>`;
+
+  kpiEl.innerHTML += `<div class="metric-range"><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id="metric-range"><option value="day">\u0414\u0435\u043d\u044c</option><option value="week">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value="month">\u041c\u0435\u0441\u044f\u0446</option></select></label><div id="metric-range-table"></div></div>`;
+  document.getElementById('metric-range').addEventListener('change', e=>renderMetricRange(e.target.value));
+  renderMetricRange('day');
 }
 
 function drawActivity() {
@@ -248,17 +160,24 @@ function drawActivity() {
 
   const heatmap = document.getElementById('heatmap');
   heatmap.innerHTML = '';
+  const table = document.createElement('table');
+  table.className = 'heat-table';
+  const head = document.createElement('tr');
+  head.innerHTML = '<th></th>' + Array.from({length:24},(_,i)=>`<th>${i}</th>`).join('');
+  table.appendChild(head);
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   const max = Math.max(...heat.flat());
-  for (let d = 0; d < 7; d++) {
-    for (let h = 0; h < 24; h++) {
+  for(let d=0; d<7; d++){
+    const row = document.createElement('tr');
+    row.innerHTML = `<th>${days[d]}</th>`;
+    for(let h=0; h<24; h++){
       const val = heat[d][h];
-      const div = document.createElement('div');
-      const intensity = val ? Math.round((val / max) * 255) : 0;
-      div.style.backgroundColor = `rgb(255,${255-intensity},${255-intensity})`;
-      div.title = `Day ${d}, Hour ${h}: ${val}`;
-      heatmap.appendChild(div);
+      const intensity = val ? Math.round((val/max)*255) : 0;
+      row.innerHTML += `<td class="heat-cell" style="background:rgb(255,${255-intensity},${255-intensity})" title="${days[d]} ${h}: ${val}"></td>`;
     }
+    table.appendChild(row);
   }
+  heatmap.appendChild(table);
 }
 
 function drawEngagement() {
@@ -351,7 +270,17 @@ function drawMembers() {
 
 function drawNetwork(){
   const el = document.getElementById('network');
-  el.innerHTML = '<h2>Reply Network (edge list)</h2><pre>'+JSON.stringify(window.edgeList.slice(0,50),null,2)+'</pre>';
+  el.innerHTML = '<h2>Reply Network</h2>';
+  const table = document.createElement('table');
+  table.className = 'edge-table';
+  table.innerHTML = '<tr><th>From</th><th>To</th><th>Count</th></tr>';
+  window.edgeList.forEach(e=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${e.from}</td><td>${e.to}</td><td>${e.count}</td>`;
+    tr.title = `${e.from} → ${e.to}: ${e.count}`;
+    table.appendChild(tr);
+  });
+  el.appendChild(table);
 }
 
 function renderHorizontalBar(container, labels, data, title) {
@@ -449,9 +378,9 @@ function calcRetention2(msgs){
   };
 }
 
-function calcLifetime() {
+function calcLifetime(msgs = filteredMessages) {
   const users = {};
-  filteredMessages.forEach(m => {
+  msgs.forEach(m => {
     const u = m.from_id || m.from;
     const d = new Date(m.date);
     users[u] = users[u] || {first:d,last:d};
@@ -465,3 +394,139 @@ function calcLifetime() {
 function diffDays(a,b){return Math.round((b-a)/86400000);}
 
 function diffMinutes(a,b){return Math.round((b-a)/60000);}
+
+const metricLabels = {
+  mediaCount:'\u0421\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f \u0441 \u043c\u0435\u0434\u0438\u0430',
+  linkCount:'\u0421\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f \u0441\u043e \u0441\u0441\u044b\u043b\u043a\u0430\u043c\u0438',
+  avgChars:'\u0421\u0440\u0435\u0434\u043d\u044f\u044f \u0434\u043b\u0438\u043d\u0430 (\u0441\u0438\u043c\u0432.)',
+  avgWords:'\u0421\u0440\u0435\u0434\u043d\u044f\u044f \u0434\u043b\u0438\u043d\u0430 (\u0441\u043b\u043e\u0432)',
+  longMsgs:'\u0414\u043b\u0438\u043d\u043d\u044b\u0435 >500',
+  emojiFreq:'\u041a\u043e\u043b-\u0432\u043e \u044d\u043c\u043e\u0434\u0437\u0438',
+  forwarded:'\u041f\u0435\u0440\u0435\u0441\u043b\u0430\u043d\u043d\u044b\u0435',
+  replyMsgs:'\u041e\u0442\u0432\u0435\u0442\u044b',
+  mentionCount:'\u0423\u043f\u043e\u043c\u0438\u043d\u0430\u043d\u0438\u044f',
+  questionCount:'\u0412\u043e\u043f\u0440\u043e\u0441\u044b',
+  avgTimeFirstReply:'\u0421\u0440\u0435\u0434\u043d\u0435\u0435 \u0432\u0440\u0435\u043c\u044f \u043e\u0442\u0432\u0435\u0442\u0430 (\u043c\u0438\u043d)',
+  shareNoReplies:'% \u0431\u0435\u0437 \u043e\u0442\u0432\u0435\u0442\u043e\u0432',
+  avgThreadDepth:'\u0421\u0440. \u0433\u043b\u0443\u0431\u0438\u043d\u0430 \u0432\u0435\u0442\u043a\u0438',
+  avgThreadLifetime:'\u0421\u0440. \u0434\u043b\u0438\u0442\u0435\u043b\u044c\u043d\u043e\u0441\u0442\u044c \u0432\u0435\u0442\u043a\u0438 (\u043c\u0438\u043d)',
+  threadCount:'\u0410\u043a\u0442\u0438\u0432\u043d\u044b\u0435 \u0432\u0435\u0442\u043a\u0438',
+  density:'\u041f\u043b\u043e\u0442\u043d\u043e\u0441\u0442\u044c \u0441\u0435\u0442\u0438',
+  uniquePairs:'\u0423\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0435 \u043f\u0430\u0440\u044b',
+  lowActivity:'\u041d\u0438\u0437\u043a\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c',
+  active5:'5+ \u0441\u0432\u044f\u0437\u0435\u0439'
+};
+
+const metricDesc = {
+  avgThreadLifetime:'\u0421\u0440\u0435\u0434\u043d\u0435\u0435 \u0432\u0440\u0435\u043c\u044f \u043c\u0435\u0436\u0434\u0443 \u043f\u0435\u0440\u0432\u044b\u043c \u0438 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u043c \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435\u043c \u0432 \u0432\u0435\u0442\u043a\u0435',
+  threadCount:'\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0432\u0435\u0442\u043e\u043a \u0441 \u043c\u0438\u043d\u0438\u043c\u0443\u043c \u0434\u0432\u0443\u043c\u044f \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f\u043c\u0438',
+  density:'\u0414\u043e\u043b\u044f \u0440\u0435\u0430\u043b\u044c\u043d\u044b\u0445 \u0441\u0432\u044f\u0437\u0435\u0439 \u043a \u043c\u0430\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u043e \u0432\u043e\u0437\u043c\u043e\u0436\u043d\u044b\u043c',
+  lowActivity:'\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0438 \u0441 \u043c\u0435\u043d\u0435\u0435 3 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f\u043c\u0438',
+  active5:'\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0438, \u0438\u043c\u0435\u044e\u0449\u0438\u0435 \u0431\u043e\u043b\u0435\u0435 5 \u0441\u0432\u044f\u0437\u0435\u0439'
+};
+
+const metricOrder = ['mediaCount','linkCount','avgChars','avgWords','longMsgs','emojiFreq','forwarded','replyMsgs','mentionCount','questionCount','avgTimeFirstReply','shareNoReplies','avgThreadDepth','avgThreadLifetime','threadCount','density','uniquePairs','lowActivity','active5'];
+
+function computeMetrics(msgs){
+  const totalMessages = msgs.length;
+  const users = new Set(msgs.map(m=>m.from_id || m.from));
+  const daily = groupByDay(msgs);
+  const dau = Object.values(daily).map(day => new Set(day.map(m => m.from_id || m.from)).size);
+  const wau = groupByWeek(msgs);
+  const mau = groupByMonth(msgs);
+  const dauAvg = avg(dau);
+  const wauAvg = avg(Object.values(wau).map(w => new Set(w.map(m => m.from_id || m.from)).size));
+  const mauAvg = avg(Object.values(mau).map(m => new Set(m.map(mes => mes.from_id || mes.from)).size));
+  const stickiness = mauAvg ? (dauAvg / mauAvg * 100).toFixed(1) : 0;
+  const retention = calcRetention2(msgs);
+  const lifetime = calcLifetime(msgs);
+
+  const text = t => (typeof t === 'string' ? t : Array.isArray(t) ? t.map(p => typeof p === 'string' ? p : p.text || '').join('') : '');
+
+  const mediaCount = msgs.filter(m => m.media_type).length;
+  const linkCount = msgs.filter(m => /https?:\/\//i.test(text(m.text))).length;
+  const lengths = msgs.map(m => text(m.text).length);
+  const wordLengths = msgs.map(m => text(m.text).split(/\s+/).filter(Boolean).length);
+  const avgChars = avg(lengths).toFixed(1);
+  const avgWords = avg(wordLengths).toFixed(1);
+  const longMsgs = lengths.filter(l => l > 500).length;
+  const emojiFreq = msgs.reduce((acc,m)=>acc+(text(m.text).match(/\p{Emoji}/gu)||[]).length,0);
+  const forwarded = msgs.filter(m => m.forwarded_from).length;
+  const replyMsgs = msgs.filter(m => m.reply_to_message_id).length;
+  const mentionCount = msgs.reduce((acc,m)=>acc+(text(m.text).match(/@\w+/g)||[]).length,0);
+  const questionCount = msgs.filter(m => text(m.text).includes('?')).length;
+
+  const msgById = {};
+  msgs.forEach(m=>{ if(m.id) msgById[m.id]=m; });
+  const threadStats = {};
+  const repliedIds = new Set();
+  msgs.forEach(m=>{
+    if(m.reply_to_message_id && msgById[m.reply_to_message_id]){
+      repliedIds.add(m.reply_to_message_id);
+      const parent = msgById[m.reply_to_message_id];
+      const tid = m.reply_to_message_id;
+      const date = new Date(m.date);
+      if(!threadStats[tid]){
+        threadStats[tid] = {count:2, first:new Date(parent.date), firstReply:date, last:date};
+      }else{
+        threadStats[tid].count++;
+        if(date < threadStats[tid].firstReply) threadStats[tid].firstReply = date;
+        if(date > threadStats[tid].last) threadStats[tid].last = date;
+      }
+    }
+  });
+  const threadArr = Object.values(threadStats);
+  const avgThreadDepth = threadArr.length ? avg(threadArr.map(t=>t.count)).toFixed(1) : 0;
+  const avgThreadLifetime = threadArr.length ? avg(threadArr.map(t=>diffMinutes(t.first, t.last))).toFixed(1) : 0;
+  const avgTimeFirstReply = threadArr.length ? avg(threadArr.map(t=>diffMinutes(t.first, t.firstReply))).toFixed(1) : 0;
+  const msgsNoReplies = msgs.filter(m => !repliedIds.has(m.id)).length;
+  const shareNoReplies = totalMessages ? (msgsNoReplies/totalMessages*100).toFixed(1) : 0;
+
+  const edges = {};
+  const userStats = {};
+  msgs.forEach(m=>{
+    const u = m.from || 'Unknown';
+    userStats[u] = userStats[u] || {messages:0,replies:0,connections:new Set()};
+    userStats[u].messages++;
+  });
+  msgs.forEach(m=>{
+    if(m.reply_to_message_id && msgById[m.reply_to_message_id]){
+      const from = m.from || 'Unknown';
+      const to = msgById[m.reply_to_message_id].from || 'Unknown';
+      const key = `${from}\u2192${to}`;
+      edges[key] = (edges[key]||0)+1;
+      userStats[to].replies++;
+      userStats[from].connections.add(to);
+      userStats[to].connections.add(from);
+    }
+  });
+  const edgeList = Object.entries(edges).map(([k,v])=>{ const [f,t]=k.split('\u2192'); return {from:f,to:t,count:v};});
+  const uniquePairs = edgeList.length;
+  const density = users.size>1 ? (uniquePairs/(users.size*(users.size-1))).toFixed(3) : 0;
+  const lowActivityUsers = Object.entries(userStats).filter(([u,s])=>s.messages<=2).map(([u])=>u);
+  const active5Users = Object.entries(userStats).filter(([u,s])=>s.connections.size>=5).map(([u])=>u);
+
+  return {
+    totalMessages, usersCount:users.size, dauAvg, wauAvg, mauAvg, stickiness,
+    retention, lifetime,
+    mediaCount, linkCount, avgChars, avgWords, longMsgs, emojiFreq, forwarded, replyMsgs,
+    mentionCount, questionCount, avgTimeFirstReply, shareNoReplies, avgThreadDepth,
+    avgThreadLifetime, threadCount:threadArr.length, density, uniquePairs,
+    lowActivity:lowActivityUsers.length, active5:active5Users.length,
+    lowActivityUsers, active5Users, edgeList
+  };
+}
+
+function renderMetricRange(range){
+  const groups = range==='day'?groupByDay(filteredMessages):range==='week'?groupByWeek(filteredMessages):groupByMonth(filteredMessages);
+  const periods = Object.keys(groups).sort().slice(-10);
+  const stats = periods.map(p=>({p, m:computeMetrics(groups[p])}));
+  const container = document.getElementById('metric-range-table');
+  if(!container) return;
+  let header = '<tr><th>\u041c\u0435\u0442\u0440\u0438\u043a\u0430</th>' + periods.map(p=>`<th>${p}</th>`).join('') + '</tr>';
+  let rows = '';
+  metricOrder.forEach(key=>{
+    rows += `<tr><td>${metricLabels[key]}</td>` + stats.map(s=>`<td>${s.m[key]}</td>`).join('') + '</tr>';
+  });
+  container.innerHTML = `<table class="period-metrics">${header}${rows}</table>`;
+}
