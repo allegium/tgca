@@ -25,6 +25,8 @@ h1 { text-align: center; }
 .heat-cell{cursor:pointer;}
 .metric-table,.edge-table,.period-metrics{width:100%;border-collapse:collapse;margin-top:10px;}
 .metric-table th,.metric-table td,.edge-table th,.edge-table td,.period-metrics th,.period-metrics td{border:1px solid #ccc;padding:4px;text-align:center;}
+.metric-range{overflow-x:auto;}
+.period-metrics{font-size:11px;white-space:nowrap;}
 .edge-table tr:hover{background:#f0f8ff;}
 .metric-table tr:nth-child(even){background:#f9f9f9;}
 .metric-table tr:hover{background:#eef;}
