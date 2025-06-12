@@ -29,3 +29,7 @@ h1 { text-align: center; }
 @media (max-width: 600px) {
   .kpi-cards { flex-direction: column; }
 }
+.filters input[type="date"]{border:1px solid #007bff;padding:4px 6px;border-radius:4px;margin-right:5px;}
+#network-chart{background:#fff;border:1px solid #ccc;margin-top:10px;}
+.date-label{font-weight:bold;margin-right:8px;color:#007bff;}
+.metric-range select{margin-left:6px;border:1px solid #007bff;padding:4px;border-radius:4px;}
