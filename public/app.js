@@ -107,7 +107,7 @@ function computeKPIs() {
   const metricsEl = document.getElementById('metrics');
   metricsEl.innerHTML = '<h2>\u041c\u0435\u0442\u0440\u0438\u043a\u0438</h2>';
 
-  let rows = '<tr><th>\u041c\u0435\u0442\u0440\u0438\u043a\u0430</th><th>\u0417\u043d\u0430\u0447\u0435\u043d\u0438\u0435</th><th>\u0424\u043e\u0440\u043c\u0443\u043b\u0430</th></tr>';
+  let rows = '<tr><th>\u041c\u0435\u0442\u0440\u0438\u043a\u0430</th><th>\u0417\u043d\u0430\u0447\u0435\u043d\u0438\u0435</th></tr>';
   metricOrder.forEach(key=>{
     const tip = [desc[key], formulas[key]].filter(Boolean).join(' ');
     const title = tip ? ` title="${tip}"` : '';
@@ -118,13 +118,14 @@ function computeKPIs() {
     if(key==='active5'){
       val = `<span class="clickable" onclick=\"toggleNames('active5')\">${metrics.active5}</span><div id=\"active5-names\" class=\"hidden\">${metrics.active5Users.join(', ')}</div>`;
     }
-    rows += `<tr><td${title}>${labels[key]} <span class="info" title="${tip}">?</span></td><td>${val}</td><td>${formulas[key]||''}</td></tr>`;
+    rows += `<tr><td${title}>${labels[key]} <span class="info" title="${tip}">?</span></td><td>${val}</td></tr>`;
   });
   metricsEl.innerHTML += `<table class="metric-table">${rows}</table>`;
 
   metricsEl.innerHTML += `<div class="metric-range"><label for=\"metric-range-select\">\u041f\u0435\u0440\u0438\u043e\u0434</label> <select id=\"metric-range-select\"><option value=\"day\">\u0414\u0435\u043d\u044c</option><option value=\"month\">\u041c\u0435\u0441\u044f\u0446</option><option value=\"year\">\u0413\u043e\u0434</option></select><div id=\"metric-range-table\"></div></div>`;
-  document.getElementById('metric-range-select').addEventListener('change', e=>renderMetricRange(e.target.value));
-  renderMetricRange('day');
+  const rangeSelect = document.getElementById('metric-range-select');
+  rangeSelect.addEventListener('change', () => renderMetricRange(rangeSelect.value));
+  renderMetricRange(rangeSelect.value);
 
   let metricOptions = metricOrder.map(k=>`<option value=\"${k}\">${labels[k]}</option>`).join('');
   metricsEl.innerHTML += `<div class="chart-container"><label>\u041c\u0435\u0442\u0440\u0438\u043a\u0430 <select id=\"metric-select\">${metricOptions}</select></label><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id=\"metric-chart-range\"><option value=\"day\">\u0414\u0435\u043d\u044c</option><option value=\"month\">\u041c\u0435\u0441\u044f\u0446</option><option value=\"year\">\u0413\u043e\u0434</option></select></label><canvas id=\"metric-chart\"></canvas></div>`;
