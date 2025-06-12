@@ -7,11 +7,13 @@ h1 { text-align: center; }
 .upload-label:hover { background:#0069d9; }
 .section { margin-top: 40px; background:#fff; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); padding:20px; border-left:4px solid #cde; }
 .section:nth-of-type(even){background:#fdfdfd;border-left-color:#ecb;}
-.filters { margin-bottom: 20px; }
+.filters { margin-bottom: 20px; background:#fff;padding:10px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1); }
 .hidden { display: none; }
 .kpi-cards { display: flex; flex-wrap: wrap; gap: 10px; }
 .kpi-card { flex: 1 1 150px; border: 1px solid #ddd; padding: 15px; text-align: center; border-radius:8px; background:#fafafa; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
-.chart-container { position: relative; height: 400px; }
+.chart-container { position: relative; height: 400px; margin-top:10px; }
+.info{margin-left:4px;border:1px solid #777;border-radius:50%;padding:0 4px;font-size:0.8em;color:#777;cursor:pointer;}
+.clickable{cursor:pointer;color:#007bff;text-decoration:underline;}
 .bar-horizontal { display: flex; align-items: center; margin-bottom: 5px; }
 .bar-horizontal .label { width: 120px; }
 .bar-horizontal .bar { flex-grow: 1; height: 20px; background: #4caf50; margin-left: 5px; border-radius:10px; }
@@ -22,6 +24,8 @@ h1 { text-align: center; }
 .metric-table,.edge-table,.period-metrics{width:100%;border-collapse:collapse;margin-top:10px;}
 .metric-table th,.metric-table td,.edge-table th,.edge-table td,.period-metrics th,.period-metrics td{border:1px solid #ccc;padding:4px;text-align:center;}
 .edge-table tr:hover{background:#f0f8ff;}
+.metric-table tr:nth-child(even){background:#f9f9f9;}
+.metric-table tr:hover{background:#eef;}
 @media (max-width: 600px) {
   .kpi-cards { flex-direction: column; }
 }
