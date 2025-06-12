@@ -199,8 +199,6 @@ function drawEngagement() {
   let replyCount = 0;
   const dailyReplies = {};
   const dailyReactions = {};
-  const userMessages = {};
-  const userReacts = {};
   filteredMessages.forEach(m => {
     if (m.reactions) {
       m.reactions.forEach(r => {
@@ -208,7 +206,6 @@ function drawEngagement() {
         const u = m.from || 'Unknown';
         reactionUsers[r.reaction] = reactionUsers[r.reaction] || {};
         reactionUsers[r.reaction][u] = (reactionUsers[r.reaction][u] || 0) + 1;
-        userReacts[u] = (userReacts[u] || 0) + 1;
         const day = m.date.slice(0,10);
         dailyReactions[day] = (dailyReactions[day] || 0) + 1;
       });
@@ -218,8 +215,6 @@ function drawEngagement() {
       const day = m.date.slice(0,10);
       dailyReplies[day] = (dailyReplies[day] || 0) + 1;
     }
-    const u = m.from || 'Unknown';
-    userMessages[u] = (userMessages[u] || 0) + 1;
   });
   const totalReactions = Object.values(reactions).reduce((a,b)=>a+b,0);
   const engagementRate = ((totalReactions + replyCount) / filteredMessages.length * 100).toFixed(1);
@@ -232,8 +227,6 @@ function drawEngagement() {
   el.innerHTML = `<h2>Engagement</h2>
     <div class="chart-container"><canvas id="reaction-chart"></canvas></div>
     <div class="chart-container"><canvas id="reply-chart"></canvas></div>
-    <label>Distribution <select id="eng-user-select"><option value="messages">Messages</option><option value="reactions">Reactions</option></select></label>
-    <div class="chart-container"><canvas id="eng-user-chart"></canvas></div>
     <p>Engagement Rate: <strong>${engagementRate}%</strong></p>`;
 
   if (charts.reactions) charts.reactions.destroy();
@@ -260,19 +253,13 @@ function drawEngagement() {
     options: { scales: { x: { stacked: true }, y: { stacked: false } } }
   });
 
-  function renderEngUser(type){
-    const src = type==='reactions'?userReacts:userMessages;
-    const labels = Object.keys(src);
-    const data = Object.values(src);
-    if(charts.engUser) charts.engUser.destroy();
-    charts.engUser = new Chart(document.getElementById('eng-user-chart'),{
-      type:'pie',
-      data:{labels,datasets:[{data,backgroundColor:labels.map((_,i)=>`hsl(${i*40},70%,60%)`)]}}
-    });
-  }
-  const sel=document.getElementById('eng-user-select');
-  sel.addEventListener('change',e=>renderEngUser(e.target.value));
-  renderEngUser('messages');
+  const popular = Object.entries(reactions).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  let rows = '<tr><th>Reaction</th><th>Count</th><th>Top User</th></tr>';
+  popular.forEach(([r,c])=>{
+    const topUser = Object.entries(reactionUsers[r]).sort((a,b)=>b[1]-a[1])[0][0];
+    rows += `<tr><td>${r}</td><td>${c}</td><td>${topUser}</td></tr>`;
+  });
+  el.innerHTML += `<table class="edge-table">${rows}</table>`;
 }
 
 function drawMembers() {
@@ -308,17 +295,13 @@ function drawMembers() {
 
 function drawNetwork(){
   const el = document.getElementById('network');
-  el.innerHTML = '<h2>Reply Network</h2><div id="network-graph"></div><div id="network-info"></div>';
+  el.innerHTML = '<h2>Reply Network</h2><div id="network-graph"></div>';
   const nodesMap = {};
   window.edgeList.forEach(e=>{nodesMap[e.from]=true; nodesMap[e.to]=true;});
   const nodes = Object.keys(nodesMap).map((n,i)=>({id:i,label:n}));
   const idMap = {}; nodes.forEach(n=>{idMap[n.label]=n.id;});
-  const edgesData = new vis.DataSet(window.edgeList.map(e=>({id:`${e.from}-${e.to}`,from:idMap[e.from],to:idMap[e.to],value:e.count,title:`${e.from}→${e.to}: ${e.count}`})));
-  const network = new vis.Network(document.getElementById('network-graph'),{nodes:new vis.DataSet(nodes),edges:edgesData},{physics:{stabilization:false},interaction:{hover:true}});
-  const info = document.getElementById('network-info');
-  network.on('hoverEdge',p=>{const ed=edgesData.get(p.edge);if(ed) info.textContent=ed.title;});
-  network.on('blurEdge',()=>{info.textContent='';});
-  network.on('selectEdge',p=>{if(p.edges.length){const ed=edgesData.get(p.edges[0]);info.textContent=ed.title;}});
+  const edges = window.edgeList.map(e=>({from:idMap[e.from],to:idMap[e.to],value:e.count,title:`${e.from}→${e.to}: ${e.count}`}));
+  new vis.Network(document.getElementById('network-graph'),{nodes:new vis.DataSet(nodes),edges:new vis.DataSet(edges)},{physics:{stabilization:false}});
 }
 
 function renderHorizontalBar(container, labels, data, title) {
@@ -470,23 +453,9 @@ const kpiDesc = {
 };
 
 const metricDesc = {
-  mediaCount:'Количество сообщений с медиафайлами. Формула: count(m.media_type)',
-  linkCount:'Количество сообщений со ссылками http/https. Формула: count(/http/ в тексте)',
-  avgChars:'Среднее число символов: Σlen(text)/N',
-  avgWords:'Среднее число слов: Σwords(text)/N',
-  longMsgs:'Сообщения длиннее 500 символов. Формула: count(len(text)>500)',
-  emojiFreq:'Суммарное количество эмодзи во всех сообщениях',
-  forwarded:'Количество пересланных сообщений. Формула: count(m.forwarded_from)',
-  replyMsgs:'Число сообщений-ответов (reply_to_message_id)',
-  mentionCount:'Количество упоминаний пользователей (@name) в тексте',
-  questionCount:'Сообщения, содержащие "?"',
-  avgTimeFirstReply:'Среднее время до первого ответа в ветке (минуты)',
-  shareNoReplies:'Доля сообщений без ответов: msgsWithoutReplies/total*100%',
-  avgThreadDepth:'Среднее количество сообщений в ветке: Σдлина/кол-во веток',
   avgThreadLifetime:'\u0421\u0440\u0435\u0434\u043d\u0435\u0435 \u0432\u0440\u0435\u043c\u044f \u043c\u0435\u0436\u0434\u0443 \u043f\u0435\u0440\u0432\u044b\u043c \u0438 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u043c \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435\u043c \u0432 \u0432\u0435\u0442\u043a\u0435',
   threadCount:'\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0432\u0435\u0442\u043e\u043a \u0441 \u043c\u0438\u043d\u0438\u043c\u0443\u043c \u0434\u0432\u0443\u043c\u044f \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f\u043c\u0438',
   density:'\u0414\u043e\u043b\u044f \u0440\u0435\u0430\u043b\u044c\u043d\u044b\u0445 \u0441\u0432\u044f\u0437\u0435\u0439 \u043a \u043c\u0430\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u043e \u0432\u043e\u0437\u043c\u043e\u0436\u043d\u044b\u043c',
-  uniquePairs:'Количество уникальных пар "кто→кому" в ответах',
   lowActivity:'\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0438 \u0441 \u043c\u0435\u043d\u0435\u0435 3 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f\u043c\u0438',
   active5:'\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0438, \u0438\u043c\u0435\u044e\u0449\u0438\u0435 \u0431\u043e\u043b\u0435\u0435 5 \u0441\u0432\u044f\u0437\u0435\u0439'
 };
@@ -612,7 +581,7 @@ function drawWords(){
   renderWords('month');
 }
 
-const stopWords = new Set(['и','в','во','не','что','он','на','я','с','со','как','а','то','все','она','так','его','но','да','ты','к','у','же','вы','за','бы','по','ее','мне','было','вот','от','меня','еще','нет','о','из','ему','теперь','когда','даже','ну','ли','если','уже','или','ни','быть','был','него','до','вас','нибудь','ваш','твой','есть','это','там','тут','где','кого','чем','этом','этот','эта','эти','будет','были','the','and','to','of','in','for','with','on','at','by','this','that','it','from','or','as','be']);
+const stopWords = new Set(['и','в','во','не','что','он','на','я','с','со','как','а','то','все','она','так','его','но','да','ты','к','у','же','вы','за','бы','по','ее','мне','было','вот','от','меня','еще','нет','о','из','ему','теперь','когда','даже','ну','ли','если','уже','или','ни','быть','был','него','до','вас','нибудь','ваш','твой','есть','the','and','to','of','in','for','with','on','at','by','this','that','it','from','or','as','be']);
 
 function renderWords(range){
   const groups = range==='day'?groupByDay(filteredMessages):range==='week'?groupByWeek(filteredMessages):groupByMonth(filteredMessages);
