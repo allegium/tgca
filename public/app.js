@@ -265,10 +265,21 @@ function drawEngagement() {
     const labels = Object.keys(src);
     const data = Object.values(src);
     if(charts.engUser) charts.engUser.destroy();
-    charts.engUser = new Chart(document.getElementById('eng-user-chart'),{
-      type:'pie',
-      data:{labels,datasets:[{data,backgroundColor:labels.map((_,i)=>`hsl(${i*40},70%,60%)`)]}}
-    });
+    charts.engUser = new Chart(
+      document.getElementById('eng-user-chart'),
+      {
+        type: 'pie',
+        data: {
+          labels,
+          datasets: [
+            {
+              data,
+              backgroundColor: labels.map((_, i) => `hsl(${i * 40},70%,60%)`)
+            }
+          ]
+        }
+      }
+    );
   }
   const sel=document.getElementById('eng-user-select');
   sel.addEventListener('change',e=>renderEngUser(e.target.value));
