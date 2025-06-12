@@ -42,7 +42,10 @@ function handleFile(file) {
   reader.onload = (evt) => {
     try {
       const data = JSON.parse(evt.target.result);
-      rawMessages = data.messages || [];
+      rawMessages = data.messages
+        || (data.chats && data.chats.list && data.chats.list[0] && data.chats.list[0].messages)
+        || [];
+      if(!Array.isArray(rawMessages)) throw new Error('No messages array');
       document.getElementById('dashboard').classList.remove('hidden');
       applyFilters();
     } catch (err) {
@@ -109,7 +112,7 @@ function computeKPIs() {
 
   let rows = '<tr><th>\u041c\u0435\u0442\u0440\u0438\u043a\u0430</th><th>\u0417\u043d\u0430\u0447\u0435\u043d\u0438\u0435</th><th>\u0424\u043e\u0440\u043c\u0443\u043b\u0430</th></tr>';
   metricOrder.forEach(key=>{
-    const title = desc[key] ? ` title="${desc[key]}"` : '';
+    const info = (desc[key] || "") + " Формула: " + (formulas[key] || "");
     let val = metrics[key];
     if(key==='lowActivity'){
       val = `<span class="clickable" onclick=\"toggleNames('lowActivity')\">${metrics.lowActivity}</span><div id=\"lowActivity-names\" class=\"hidden\">${metrics.lowActivityUsers.join(', ')}</div>`;
@@ -117,13 +120,14 @@ function computeKPIs() {
     if(key==='active5'){
       val = `<span class="clickable" onclick=\"toggleNames('active5')\">${metrics.active5}</span><div id=\"active5-names\" class=\"hidden\">${metrics.active5Users.join(', ')}</div>`;
     }
-    rows += `<tr><td${title}>${labels[key]} <span class="info" title="${desc[key]||''}">?</span></td><td>${val}</td><td>${formulas[key]||''}</td></tr>`;
+    rows += `<tr><td>${labels[key]} <span class="info" title="${info}">?</span></td><td>${val}</td><td>${formulas[key]||""}</td></tr>`;
   });
   metricsEl.innerHTML += `<table class="metric-table">${rows}</table>`;
 
   metricsEl.innerHTML += `<div class="metric-range"><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id=\"metric-range\"><option value=\"day\">\u0414\u0435\u043d\u044c</option><option value=\"week\">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value=\"month\">\u041c\u0435\u0441\u044f\u0446</option></select></label><div id=\"metric-range-table\"></div></div>`;
   document.getElementById('metric-range').addEventListener('change', e=>renderMetricRange(e.target.value));
-  renderMetricRange('day');
+  const currentRange = document.getElementById('metric-range').value || 'day';
+  renderMetricRange(currentRange);
 
   let metricOptions = metricOrder.map(k=>`<option value=\"${k}\">${labels[k]}</option>`).join('');
   metricsEl.innerHTML += `<div class="chart-container"><label>\u041c\u0435\u0442\u0440\u0438\u043a\u0430 <select id=\"metric-select\">${metricOptions}</select></label><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id=\"metric-chart-range\"><option value=\"day\">\u0414\u0435\u043d\u044c</option><option value=\"week\">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value=\"month\">\u041c\u0435\u0441\u044f\u0446</option></select></label><canvas id=\"metric-chart\"></canvas></div>`;
@@ -245,7 +249,13 @@ function drawNetwork(){
   const dataNodes = Object.keys(nodes).map((n,i)=>({id:i,label:n}));
   const idMap = Object.fromEntries(dataNodes.map(n=>[n.label,n.id]));
   const dataEdges = window.edgeList.map(e=>({from:idMap[e.from],to:idMap[e.to],value:e.count,title:`${e.from}→${e.to}: ${e.count}`}));
-  const net = new vis.Network(document.getElementById('network-chart'),{nodes:new vis.DataSet(dataNodes),edges:new vis.DataSet(dataEdges)},{interaction:{hover:true}});
+  const options={
+    nodes:{shape:"dot",size:20,color:"#4682b4",font:{size:16,color:"#000"}},
+    edges:{color:{color:"#999",highlight:"#f00"},width:2},
+    physics:{barnesHut:{springLength:250}},
+    interaction:{hover:true}
+  };
+  const net = new vis.Network(document.getElementById("network-chart"),{nodes:new vis.DataSet(dataNodes),edges:new vis.DataSet(dataEdges)},options);
 }
 
 function renderHorizontalBar(container, labels, data, title) {
@@ -382,36 +392,50 @@ const metricLabels = {
   active5:'5+ \u0441\u0432\u044f\u0437\u0435\u0439'
 };
 
+
 const metricDesc = {
-  avgThreadLifetime:'\u0421\u0440\u0435\u0434\u043d\u0435\u0435 \u0432\u0440\u0435\u043c\u044f \u043c\u0435\u0436\u0434\u0443 \u043f\u0435\u0440\u0432\u044b\u043c \u0438 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u043c \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435\u043c \u0432 \u0432\u0435\u0442\u043a\u0435',
-  threadCount:'\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0432\u0435\u0442\u043e\u043a \u0441 \u043c\u0438\u043d\u0438\u043c\u0443\u043c \u0434\u0432\u0443\u043c\u044f \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f\u043c\u0438',
-  density:'\u0414\u043e\u043b\u044f \u0440\u0435\u0430\u043b\u044c\u043d\u044b\u0445 \u0441\u0432\u044f\u0437\u0435\u0439 \u043a \u043c\u0430\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u043e \u0432\u043e\u0437\u043c\u043e\u0436\u043d\u044b\u043c',
-  lowActivity:'\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0438 \u0441 \u043c\u0435\u043d\u0435\u0435 3 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f\u043c\u0438',
-  active5:'\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0438, \u0438\u043c\u0435\u044e\u0449\u0438\u0435 \u0431\u043e\u043b\u0435\u0435 5 \u0441\u0432\u044f\u0437\u0435\u0439'
+  mediaCount:'Подсчитываем сколько сообщений содержат медиафайл. Для этого проходим по всем сообщениям и проверяем наличие media_type.',
+  linkCount:'Считаем сообщения, в которых есть http/https ссылки. Это показывает активность обмена ссылками.',
+  avgChars:'Суммируем длину всех текстов и делим на число сообщений, чтобы узнать среднюю длину в символах.',
+  avgWords:'Общее число слов во всех сообщениях делим на количество сообщений, чтобы оценить среднюю длину в словах.',
+  longMsgs:'Показываем, сколько сообщений превышают 500 символов.',
+  emojiFreq:'Собираем все эмодзи в текстах и считаем их общее количество.',
+  forwarded:'Подсчитываем количество пересланных сообщений по наличию forwarded_from.',
+  replyMsgs:'Количество сообщений-ответов определяем по reply_to_message_id.',
+  mentionCount:'Собираем все значок @ перед именами и считаем, насколько часто участники упоминают друг друга.',
+  questionCount:'Показывает, сколько сообщений содержат вопросительный знак.',
+  avgTimeFirstReply:'Для каждой ветки вычисляем разницу между первым сообщением и первым ответом, затем берём среднее значение.',
+  shareNoReplies:'Доля сообщений без ответов: делим количество таких сообщений на общее и умножаем на 100.',
+  avgThreadDepth:'Взято число сообщений в каждой ветке и поделено на число веток, чтобы получить среднюю глубину.',
+  avgThreadLifetime:'Средняя продолжительность ветки: рассчитываем разницу между первым и последним сообщением, затем среднее по всем веткам.',
+  threadCount:'Число веток, в которых не меньше двух сообщений.',
+  density:'Оцениваем долю реальных связей между участниками к максимально возможной.',
+  uniquePairs:'Количество уникальных пар отправитель–ответчик.',
+  lowActivity:'Сколько пользователей написали менее трёх сообщений.',
+  active5:'Пользователи, которые обменивались ответами хотя бы с пятью людьми.'
 };
 
 const metricFormulas = {
-  mediaCount:'count(messages with media_type)',
-  linkCount:'count(messages with link)',
-  avgChars:'sum(chars)/messages',
-  avgWords:'sum(words)/messages',
-  longMsgs:'count(length>500)',
-  emojiFreq:'total emojis',
-  forwarded:'count(forwarded_from)',
-  replyMsgs:'count(reply_to_message_id)',
-  mentionCount:'total @mentions',
-  questionCount:'count(text contains ?) ',
-  avgTimeFirstReply:'avg minutes to first reply',
-  shareNoReplies:'no reply msgs/total*100%',
-  avgThreadDepth:'avg msgs per thread',
-  avgThreadLifetime:'avg minutes thread active',
-  threadCount:'threads with >=2 msgs',
-  density:'uniquePairs/(users*(users-1))',
-  uniquePairs:'distinct reply pairs',
-  lowActivity:'users with <=2 msgs',
-  active5:'users with >=5 links'
+  mediaCount:'Количество сообщений с медиафайлами',
+  linkCount:'Количество сообщений со ссылками',
+  avgChars:'Σ длины сообщений / число сообщений',
+  avgWords:'Σ количества слов / число сообщений',
+  longMsgs:'Сообщения длиннее 500 символов',
+  emojiFreq:'Общее число эмодзи',
+  forwarded:'Количество пересланных сообщений',
+  replyMsgs:'Количество ответов',
+  mentionCount:'Число упоминаний @',
+  questionCount:'Сообщения со знаком вопроса',
+  avgTimeFirstReply:'Среднее время до первого ответа',
+  shareNoReplies:'(без ответов / все сообщения) × 100%',
+  avgThreadDepth:'Среднее число сообщений в ветке',
+  avgThreadLifetime:'Средняя длительность ветки в минутах',
+  threadCount:'Ветки с минимум 2 сообщениями',
+  density:'Уникальные пары / (пользователи × (пользователи-1))',
+  uniquePairs:'Число уникальных пар',
+  lowActivity:'Пользователи с ≤2 сообщениями',
+  active5:'Пользователи с ≥5 связями'
 };
-
 const metricOrder = ['mediaCount','linkCount','avgChars','avgWords','longMsgs','emojiFreq','forwarded','replyMsgs','mentionCount','questionCount','avgTimeFirstReply','shareNoReplies','avgThreadDepth','avgThreadLifetime','threadCount','density','uniquePairs','lowActivity','active5'];
 
 function computeMetrics(msgs){
@@ -511,6 +535,7 @@ function renderMetricRange(range){
   let header = '<tr><th>\u041c\u0435\u0442\u0440\u0438\u043a\u0430</th>' + periods.map(p=>`<th>${p}</th>`).join('') + '</tr>';
   let rows = '';
   metricOrder.forEach(key=>{
+    const info = (desc[key] || "") + " Формула: " + (formulas[key] || "");
     rows += `<tr><td>${metricLabels[key]}</td>` + stats.map(s=>`<td>${s.m[key]}</td>`).join('') + '</tr>';
   });
   container.innerHTML = `<table class="period-metrics">${header}${rows}</table>`;
@@ -542,12 +567,17 @@ function drawWords(){
     return noun.test(w)||adj.test(w)||verb.test(w)||adv.test(w)||part.test(w)||ger.test(w);
   }
   const freq={};
+  const simple={};
   filteredMessages.forEach(m=>{
     const words=extractText(m.text).toLowerCase().match(/\b[\p{L}]{3,}\b/gu);
     if(!words) return;
-    words.forEach(w=>{if(!stop.includes(w)&&allowed(w)) freq[w]=(freq[w]||0)+1;});
+    words.forEach(w=>{
+      simple[w]=(simple[w]||0)+1;
+      if(!stop.includes(w)&&allowed(w)) freq[w]=(freq[w]||0)+1;
+    });
   });
-  const top=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  let top=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  if(top.length===0) top=Object.entries(simple).sort((a,b)=>b[1]-a[1]).slice(0,20);
   const el=document.getElementById('words');
   el.innerHTML='<h2>\u041f\u043e\u043f\u0443\u043b\u044f\u0440\u043d\u044b\u0435 \u0441\u043b\u043e\u0432\u0430</h2>';
   let table='<table class="metric-table"><tr><th>\u0421\u043b\u043e\u0432\u043e</th><th>\u0427\u0430\u0441\u0442\u043e\u0442\u0430</th></tr>';
