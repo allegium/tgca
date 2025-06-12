@@ -42,7 +42,10 @@ function handleFile(file) {
   reader.onload = (evt) => {
     try {
       const data = JSON.parse(evt.target.result);
-      rawMessages = data.messages || [];
+      rawMessages = data.messages
+        || (data.chats && data.chats.list && data.chats.list[0] && data.chats.list[0].messages)
+        || [];
+      if(!Array.isArray(rawMessages)) throw new Error('No messages array');
       document.getElementById('dashboard').classList.remove('hidden');
       applyFilters();
     } catch (err) {
@@ -123,7 +126,8 @@ function computeKPIs() {
 
   metricsEl.innerHTML += `<div class="metric-range"><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id=\"metric-range\"><option value=\"day\">\u0414\u0435\u043d\u044c</option><option value=\"week\">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value=\"month\">\u041c\u0435\u0441\u044f\u0446</option></select></label><div id=\"metric-range-table\"></div></div>`;
   document.getElementById('metric-range').addEventListener('change', e=>renderMetricRange(e.target.value));
-  renderMetricRange('day');
+  const currentRange = document.getElementById('metric-range').value || 'day';
+  renderMetricRange(currentRange);
 
   let metricOptions = metricOrder.map(k=>`<option value=\"${k}\">${labels[k]}</option>`).join('');
   metricsEl.innerHTML += `<div class="chart-container"><label>\u041c\u0435\u0442\u0440\u0438\u043a\u0430 <select id=\"metric-select\">${metricOptions}</select></label><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id=\"metric-chart-range\"><option value=\"day\">\u0414\u0435\u043d\u044c</option><option value=\"week\">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value=\"month\">\u041c\u0435\u0441\u044f\u0446</option></select></label><canvas id=\"metric-chart\"></canvas></div>`;
@@ -245,7 +249,16 @@ function drawNetwork(){
   const dataNodes = Object.keys(nodes).map((n,i)=>({id:i,label:n}));
   const idMap = Object.fromEntries(dataNodes.map(n=>[n.label,n.id]));
   const dataEdges = window.edgeList.map(e=>({from:idMap[e.from],to:idMap[e.to],value:e.count,title:`${e.from}→${e.to}: ${e.count}`}));
+<<<<<<< bznz8k-codex/update-metric-formulas,-add-hover-explanations
+  const options={
+    nodes:{shape:"dot",size:20,color:"#4682b4",font:{size:16,color:"#000"}},
+    edges:{color:{color:"#999",highlight:"#f00"},width:2},
+    physics:{barnesHut:{springLength:250}},
+    interaction:{hover:true}
+  };
+=======
   const options={nodes:{shape:"dot",size:15,font:{size:14}},edges:{color:{color:"#555"},width:2},physics:{barnesHut:{springLength:200}},interaction:{hover:true}};
+>>>>>>> main
   const net = new vis.Network(document.getElementById("network-chart"),{nodes:new vis.DataSet(dataNodes),edges:new vis.DataSet(dataEdges)},options);
 }
 
@@ -558,12 +571,17 @@ function drawWords(){
     return noun.test(w)||adj.test(w)||verb.test(w)||adv.test(w)||part.test(w)||ger.test(w);
   }
   const freq={};
+  const simple={};
   filteredMessages.forEach(m=>{
     const words=extractText(m.text).toLowerCase().match(/\b[\p{L}]{3,}\b/gu);
     if(!words) return;
-    words.forEach(w=>{if(!stop.includes(w)&&allowed(w)) freq[w]=(freq[w]||0)+1;});
+    words.forEach(w=>{
+      simple[w]=(simple[w]||0)+1;
+      if(!stop.includes(w)&&allowed(w)) freq[w]=(freq[w]||0)+1;
+    });
   });
-  const top=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  let top=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  if(top.length===0) top=Object.entries(simple).sort((a,b)=>b[1]-a[1]).slice(0,20);
   const el=document.getElementById('words');
   el.innerHTML='<h2>\u041f\u043e\u043f\u0443\u043b\u044f\u0440\u043d\u044b\u0435 \u0441\u043b\u043e\u0432\u0430</h2>';
   let table='<table class="metric-table"><tr><th>\u0421\u043b\u043e\u0432\u043e</th><th>\u0427\u0430\u0441\u0442\u043e\u0442\u0430</th></tr>';
