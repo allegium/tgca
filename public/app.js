@@ -2,6 +2,17 @@ let rawMessages = [];
 let filteredMessages = [];
 let charts = {};
 
+function extractText(t){
+  if(typeof t==='string') return t;
+  if(Array.isArray(t)) return t.map(p=>typeof p==='string'?p:(p.text||'')).join('');
+  return '';
+}
+
+function toggleNames(key){
+  const el=document.getElementById(key+'-names');
+  if(el) el.classList.toggle('hidden');
+}
+
 document.getElementById('upload-btn').addEventListener('click', () => {
   document.getElementById('file-input').click();
 });
@@ -67,6 +78,7 @@ function renderDashboard() {
   drawEngagement();
   drawMembers();
   drawNetwork();
+  drawWords();
 }
 
 function computeKPIs() {
@@ -78,7 +90,7 @@ function computeKPIs() {
   const desc = metricDesc;
   const kpiEl = document.getElementById('kpi');
   kpiEl.innerHTML = `
-    <h2>\u041a\u043b\u044e\u0447\u0435\u0432\u044b\u0435 \u043c\u0435\u0442\u0440\u0438\u043a\u0438</h2>
+    <h2>\u041a\u043b\u044e\u0447\u0435\u0432\u044b\u0435 \u043c\u0435\u0442\u0440\u0438\u043a\u0438 <span class="info" title=\"\u041f\u0440\u0435\u0434\u0441\u0442\u0430\u0432\u043b\u0435\u043d\u044b \u043e\u0441\u043d\u043e\u0432\u043d\u044b\u0435 \u043f\u043e\u043a\u0430\u0437\u0430\u0442\u0435\u043b\u0438 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0447\u0430\u0442\u0430.\">?</span></h2>
     <div class="kpi-cards">
       <div class="kpi-card"><div class="num">${metrics.totalMessages}</div><div>\u0412\u0441\u0435\u0433\u043e \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0439</div></div>
       <div class="kpi-card"><div class="num">${metrics.usersCount}</div><div>\u0423\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0445 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u043e\u0432</div></div>
@@ -97,15 +109,25 @@ function computeKPIs() {
   metricOrder.forEach(key=>{
     const title = desc[key] ? ` title="${desc[key]}"` : '';
     let val = metrics[key];
-    if(key==='lowActivity') val = `${metrics.lowActivity} (${metrics.lowActivityUsers.join(', ')})`;
-    if(key==='active5') val = `${metrics.active5} (${metrics.active5Users.join(', ')})`;
-    rows += `<tr><td${title}>${labels[key]}</td><td>${val}</td></tr>`;
+    if(key==='lowActivity'){
+      val = `<span class="clickable" onclick=\"toggleNames('lowActivity')\">${metrics.lowActivity}</span><div id="lowActivity-names" class="hidden">${metrics.lowActivityUsers.join(', ')}</div>`;
+    }
+    if(key==='active5'){
+      val = `<span class="clickable" onclick=\"toggleNames('active5')\">${metrics.active5}</span><div id="active5-names" class="hidden">${metrics.active5Users.join(', ')}</div>`;
+    }
+    rows += `<tr><td${title}>${labels[key]} <span class="info" title="${desc[key]||''}">?</span></td><td>${val}</td></tr>`;
   });
   kpiEl.innerHTML += `<table class="metric-table">${rows}</table>`;
 
   kpiEl.innerHTML += `<div class="metric-range"><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id="metric-range"><option value="day">\u0414\u0435\u043d\u044c</option><option value="week">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value="month">\u041c\u0435\u0441\u044f\u0446</option></select></label><div id="metric-range-table"></div></div>`;
   document.getElementById('metric-range').addEventListener('change', e=>renderMetricRange(e.target.value));
   renderMetricRange('day');
+
+  let metricOptions = metricOrder.map(k=>`<option value="${k}">${labels[k]}</option>`).join('');
+  kpiEl.innerHTML += `<div class="chart-container"><label>\u041c\u0435\u0442\u0440\u0438\u043a\u0430 <select id="metric-select">${metricOptions}</select></label><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id="metric-chart-range"><option value="day">\u0414\u0435\u043d\u044c</option><option value="week">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value="month">\u041c\u0435\u0441\u044f\u0446</option></select></label><canvas id="metric-chart"></canvas></div>`;
+  document.getElementById('metric-select').addEventListener('change',()=>renderMetricChart());
+  document.getElementById('metric-chart-range').addEventListener('change',()=>renderMetricChart());
+  renderMetricChart();
 }
 
 function drawActivity() {
@@ -184,13 +206,22 @@ function drawActivity() {
 
 function drawEngagement() {
   const reactions = {};
+  const reactionUsers = {};
   let replyCount = 0;
   const dailyReplies = {};
   const dailyReactions = {};
+  const msgPerUser = {};
+  const reactPerUser = {};
   filteredMessages.forEach(m => {
+    const u = m.from || 'Unknown';
+    msgPerUser[u] = (msgPerUser[u]||0)+1;
     if (m.reactions) {
       m.reactions.forEach(r => {
         reactions[r.reaction] = (reactions[r.reaction] || 0) + 1;
+        reactionUsers[r.reaction] = reactionUsers[r.reaction] || {};
+        reactionUsers[r.reaction][u] = (reactionUsers[r.reaction][u] || 0) + 1;
+        const actor = r.actor || u;
+        reactPerUser[actor] = (reactPerUser[actor]||0)+1;
         const day = m.date.slice(0,10);
         dailyReactions[day] = (dailyReactions[day] || 0) + 1;
       });
@@ -204,14 +235,17 @@ function drawEngagement() {
   const totalReactions = Object.values(reactions).reduce((a,b)=>a+b,0);
   const engagementRate = ((totalReactions + replyCount) / filteredMessages.length * 100).toFixed(1);
 
+  const userPie = {messages:msgPerUser,reactions:reactPerUser};
+
   const days = Array.from(new Set([...Object.keys(dailyReplies), ...Object.keys(dailyReactions)])).sort();
   const repliesSeries = days.map(d => dailyReplies[d] || 0);
   const reactionsSeries = days.map(d => dailyReactions[d] || 0);
 
   const el = document.getElementById('engagement');
-  el.innerHTML = `<h2>Engagement</h2>
+  el.innerHTML = `<h2>Engagement <span class="info" title=\"\u0420\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0435\u043d\u0438\u0435 \u0440\u0435\u0430\u043a\u0446\u0438\u0439 \u0438 \u043e\u0442\u0432\u0435\u0442\u043e\u0432\">?</span></h2>
     <div class="chart-container"><canvas id="reaction-chart"></canvas></div>
     <div class="chart-container"><canvas id="reply-chart"></canvas></div>
+    <div class="chart-container"><label>\u0422\u0438\u043f <select id="engage-type"><option value="messages">\u0421\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u044f</option><option value="reactions">\u0420\u0435\u0430\u043a\u0446\u0438\u0438</option></select></label><canvas id="engage-pie"></canvas></div>
     <p>Engagement Rate: <strong>${engagementRate}%</strong></p>`;
 
   if (charts.reactions) charts.reactions.destroy();
@@ -237,6 +271,25 @@ function drawEngagement() {
     },
     options: { scales: { x: { stacked: true }, y: { stacked: false } } }
   });
+
+  function updatePie(){
+    const type=document.getElementById('engage-type').value;
+    const stats=userPie[type];
+    const labels=Object.keys(stats);
+    const data=Object.values(stats);
+    const colors=labels.map((_,i)=>`hsl(${i*30},70%,60%)`);
+    if(charts.engagePie) charts.engagePie.destroy();
+    charts.engagePie=new Chart(document.getElementById('engage-pie'),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors}]}});
+  }
+  document.getElementById('engage-type').addEventListener('change',updatePie);
+  updatePie();
+
+  const tableRows = Object.entries(reactions).sort((a,b)=>b[1]-a[1]).map(([r,c])=>{
+    const users = reactionUsers[r];
+    const topUser = Object.entries(users).sort((a,b)=>b[1]-a[1])[0][0];
+    return `<tr><td>${r}</td><td>${c}</td><td>${topUser}</td></tr>`;
+  }).join('');
+  el.innerHTML += `<table class="metric-table"><tr><th>Reaction</th><th>Count</th><th>Top User</th></tr>${tableRows}</table>`;
 }
 
 function drawMembers() {
@@ -272,17 +325,13 @@ function drawMembers() {
 
 function drawNetwork(){
   const el = document.getElementById('network');
-  el.innerHTML = '<h2>Reply Network</h2>';
-  const table = document.createElement('table');
-  table.className = 'edge-table';
-  table.innerHTML = '<tr><th>From</th><th>To</th><th>Count</th></tr>';
-  window.edgeList.forEach(e=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${e.from}</td><td>${e.to}</td><td>${e.count}</td>`;
-    tr.title = `${e.from} → ${e.to}: ${e.count}`;
-    table.appendChild(tr);
-  });
-  el.appendChild(table);
+  el.innerHTML = '<h2>Reply Network <span class="info" title="\u0412\u0437\u0430\u0438\u043c\u043e\u0434\u0435\u0439\u0441\u0442\u0432\u0438\u044f \u043c\u0435\u0436\u0434\u0443 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0430\u043c\u0438">?</span></h2><div id="network-chart" style="height:400px"></div>';
+  const nodes = {};
+  window.edgeList.forEach(e=>{nodes[e.from]=true;nodes[e.to]=true;});
+  const dataNodes = Object.keys(nodes).map((n,i)=>({id:i,label:n}));
+  const idMap = Object.fromEntries(dataNodes.map(n=>[n.label,n.id]));
+  const dataEdges = window.edgeList.map(e=>({from:idMap[e.from],to:idMap[e.to],value:e.count,title:`${e.from}→${e.to}: ${e.count}`}));
+  const net = new vis.Network(document.getElementById('network-chart'),{nodes:new vis.DataSet(dataNodes),edges:new vis.DataSet(dataEdges)},{interaction:{hover:true}});
 }
 
 function renderHorizontalBar(container, labels, data, title) {
@@ -443,20 +492,18 @@ function computeMetrics(msgs){
   const retention = calcRetention2(msgs);
   const lifetime = calcLifetime(msgs);
 
-  const text = t => (typeof t === 'string' ? t : Array.isArray(t) ? t.map(p => typeof p === 'string' ? p : p.text || '').join('') : '');
-
   const mediaCount = msgs.filter(m => m.media_type).length;
-  const linkCount = msgs.filter(m => /https?:\/\//i.test(text(m.text))).length;
-  const lengths = msgs.map(m => text(m.text).length);
-  const wordLengths = msgs.map(m => text(m.text).split(/\s+/).filter(Boolean).length);
+  const linkCount = msgs.filter(m => /https?:\/\//i.test(extractText(m.text))).length;
+  const lengths = msgs.map(m => extractText(m.text).length);
+  const wordLengths = msgs.map(m => extractText(m.text).split(/\s+/).filter(Boolean).length);
   const avgChars = avg(lengths).toFixed(1);
   const avgWords = avg(wordLengths).toFixed(1);
   const longMsgs = lengths.filter(l => l > 500).length;
-  const emojiFreq = msgs.reduce((acc,m)=>acc+(text(m.text).match(/\p{Emoji}/gu)||[]).length,0);
+  const emojiFreq = msgs.reduce((acc,m)=>acc+(extractText(m.text).match(/\p{Emoji}/gu)||[]).length,0);
   const forwarded = msgs.filter(m => m.forwarded_from).length;
   const replyMsgs = msgs.filter(m => m.reply_to_message_id).length;
-  const mentionCount = msgs.reduce((acc,m)=>acc+(text(m.text).match(/@\w+/g)||[]).length,0);
-  const questionCount = msgs.filter(m => text(m.text).includes('?')).length;
+  const mentionCount = msgs.reduce((acc,m)=>acc+(extractText(m.text).match(/@\w+/g)||[]).length,0);
+  const questionCount = msgs.filter(m => extractText(m.text).includes('?')).length;
 
   const msgById = {};
   msgs.forEach(m=>{ if(m.id) msgById[m.id]=m; });
@@ -531,4 +578,35 @@ function renderMetricRange(range){
     rows += `<tr><td>${metricLabels[key]}</td>` + stats.map(s=>`<td>${s.m[key]}</td>`).join('') + '</tr>';
   });
   container.innerHTML = `<table class="period-metrics">${header}${rows}</table>`;
+}
+
+function renderMetricChart(){
+  const metric = document.getElementById('metric-select').value;
+  const range = document.getElementById('metric-chart-range').value;
+  const groups = range==='day'?groupByDay(filteredMessages):range==='week'?groupByWeek(filteredMessages):groupByMonth(filteredMessages);
+  const periods = Object.keys(groups).sort();
+  const data = periods.map(p=>computeMetrics(groups[p])[metric]);
+  if(charts.metric) charts.metric.destroy();
+  charts.metric = new Chart(document.getElementById('metric-chart'),{
+    type:'line',
+    data:{labels:periods,datasets:[{label:metricLabels[metric],data,fill:false,borderColor:'green'}]},
+    options:{scales:{x:{ticks:{autoSkip:false}}}}
+  });
+}
+
+function drawWords(){
+  const stop=['и','в','во','не','что','он','она','они','я','ты','мы','вы','а','но','как','так','его','её','их','же','бы','для','за','по','из','у','к','о','с','на','то','это','этот','там','тут','да','нет'];
+  const freq={};
+  filteredMessages.forEach(m=>{
+    const words=extractText(m.text).toLowerCase().match(/\b[\p{L}]{3,}\b/gu);
+    if(!words) return;
+    words.forEach(w=>{if(!stop.includes(w)) freq[w]=(freq[w]||0)+1;});
+  });
+  const top=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  const el=document.getElementById('words');
+  el.innerHTML='<h2>\u041f\u043e\u043f\u0443\u043b\u044f\u0440\u043d\u044b\u0435 \u0441\u043b\u043e\u0432\u0430</h2>';
+  let table='<table class="metric-table"><tr><th>\u0421\u043b\u043e\u0432\u043e</th><th>\u0427\u0430\u0441\u0442\u043e\u0442\u0430</th></tr>';
+  top.forEach(([w,c])=>{table+=`<tr><td>${w}</td><td>${c}</td></tr>`;});
+  table+='</table>';
+  el.innerHTML+=table;
 }
