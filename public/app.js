@@ -109,7 +109,8 @@ function computeKPIs() {
 
   let rows = '<tr><th>\u041c\u0435\u0442\u0440\u0438\u043a\u0430</th><th>\u0417\u043d\u0430\u0447\u0435\u043d\u0438\u0435</th><th>\u0424\u043e\u0440\u043c\u0443\u043b\u0430</th></tr>';
   metricOrder.forEach(key=>{
-    const title = desc[key] ? ` title="${desc[key]}"` : '';
+    const tip = [desc[key], formulas[key]].filter(Boolean).join(' ');
+    const title = tip ? ` title="${tip}"` : '';
     let val = metrics[key];
     if(key==='lowActivity'){
       val = `<span class="clickable" onclick=\"toggleNames('lowActivity')\">${metrics.lowActivity}</span><div id=\"lowActivity-names\" class=\"hidden\">${metrics.lowActivityUsers.join(', ')}</div>`;
@@ -117,7 +118,7 @@ function computeKPIs() {
     if(key==='active5'){
       val = `<span class="clickable" onclick=\"toggleNames('active5')\">${metrics.active5}</span><div id=\"active5-names\" class=\"hidden\">${metrics.active5Users.join(', ')}</div>`;
     }
-    rows += `<tr><td${title}>${labels[key]} <span class="info" title="${desc[key]||''}">?</span></td><td>${val}</td><td>${formulas[key]||''}</td></tr>`;
+    rows += `<tr><td${title}>${labels[key]} <span class="info" title="${tip}">?</span></td><td>${val}</td><td>${formulas[key]||''}</td></tr>`;
   });
   metricsEl.innerHTML += `<table class="metric-table">${rows}</table>`;
 
@@ -239,13 +240,19 @@ function drawMembers() {
 
 function drawNetwork(){
   const el = document.getElementById('network');
-  el.innerHTML = '<h2>Reply Network <span class="info" title="\u0412\u0437\u0430\u0438\u043c\u043e\u0434\u0435\u0439\u0441\u0442\u0432\u0438\u044f \u043c\u0435\u0436\u0434\u0443 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0430\u043c\u0438">?</span></h2><div id="network-chart" style="height:400px"></div>';
+  el.innerHTML = '<h2>Reply Network <span class="info" title="\u0412\u0437\u0430\u0438\u043c\u043e\u0434\u0435\u0439\u0441\u0442\u0432\u0438\u044f \u043c\u0435\u0436\u0434\u0443 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0430\u043c\u0438">?</span></h2><div id="network-chart"></div>';
   const nodes = {};
   window.edgeList.forEach(e=>{nodes[e.from]=true;nodes[e.to]=true;});
   const dataNodes = Object.keys(nodes).map((n,i)=>({id:i,label:n}));
   const idMap = Object.fromEntries(dataNodes.map(n=>[n.label,n.id]));
   const dataEdges = window.edgeList.map(e=>({from:idMap[e.from],to:idMap[e.to],value:e.count,title:`${e.from}→${e.to}: ${e.count}`}));
-  const net = new vis.Network(document.getElementById('network-chart'),{nodes:new vis.DataSet(dataNodes),edges:new vis.DataSet(dataEdges)},{interaction:{hover:true}});
+  const options = {
+    nodes:{shape:'dot',size:12,color:{background:'#89CFF0',border:'#2B7CE9'},font:{color:'#000'}},
+    edges:{arrows:'to',color:{color:'#555'},width:2,smooth:{type:'dynamic'}},
+    physics:{solver:'forceAtlas2Based',springLength:200,springConstant:0.02},
+    interaction:{hover:true}
+  };
+  const net = new vis.Network(document.getElementById('network-chart'),{nodes:new vis.DataSet(dataNodes),edges:new vis.DataSet(dataEdges)},options);
 }
 
 function renderHorizontalBar(container, labels, data, title) {
@@ -391,25 +398,25 @@ const metricDesc = {
 };
 
 const metricFormulas = {
-  mediaCount:'count(messages with media_type)',
-  linkCount:'count(messages with link)',
-  avgChars:'sum(chars)/messages',
-  avgWords:'sum(words)/messages',
-  longMsgs:'count(length>500)',
-  emojiFreq:'total emojis',
-  forwarded:'count(forwarded_from)',
-  replyMsgs:'count(reply_to_message_id)',
-  mentionCount:'total @mentions',
-  questionCount:'count(text contains ?) ',
-  avgTimeFirstReply:'avg minutes to first reply',
-  shareNoReplies:'no reply msgs/total*100%',
-  avgThreadDepth:'avg msgs per thread',
-  avgThreadLifetime:'avg minutes thread active',
-  threadCount:'threads with >=2 msgs',
-  density:'uniquePairs/(users*(users-1))',
-  uniquePairs:'distinct reply pairs',
-  lowActivity:'users with <=2 msgs',
-  active5:'users with >=5 links'
+  mediaCount:'Количество сообщений, содержащих фото, видео или файлы.',
+  linkCount:'Количество сообщений, в тексте которых есть ссылки.',
+  avgChars:'Суммируем длину всех сообщений и делим на их количество \u2013 получаем среднее число символов.',
+  avgWords:'Сумма количества слов во всех сообщениях делится на число сообщений.',
+  longMsgs:'Сколько сообщений длиннее 500 символов.',
+  emojiFreq:'Общее число эмодзи, встретившихся в переписке.',
+  forwarded:'Число пересланных сообщений из других чатов.',
+  replyMsgs:'Количество сообщений, являющихся ответами на другие.',
+  mentionCount:'Сколько раз участники упоминали друг друга через @.',
+  questionCount:'Количество сообщений со знаком вопроса.',
+  avgTimeFirstReply:'Среднее время в минутах от первого сообщения до первого ответа в ветке.',
+  shareNoReplies:'Доля сообщений без ответов: число таких сообщений делим на общее и умножаем на 100%.',
+  avgThreadDepth:'Среднее количество сообщений в одной ветке.',
+  avgThreadLifetime:'Сколько минут в среднем проходит между первым и последним сообщением ветки.',
+  threadCount:'Число веток, содержащих минимум два сообщения.',
+  density:'Отношение уникальных пар \"кто отвечает кому\" к максимально возможному их числу.',
+  uniquePairs:'Количество уникальных пар участников, обменявшихся ответами.',
+  lowActivity:'Сколько участников отправили два сообщения или меньше.',
+  active5:'Число пользователей, у которых не менее пяти разных связей.'
 };
 
 const metricOrder = ['mediaCount','linkCount','avgChars','avgWords','longMsgs','emojiFreq','forwarded','replyMsgs','mentionCount','questionCount','avgTimeFirstReply','shareNoReplies','avgThreadDepth','avgThreadLifetime','threadCount','density','uniquePairs','lowActivity','active5'];
@@ -504,7 +511,8 @@ function computeMetrics(msgs){
 
 function renderMetricRange(range){
   const groups = range==='day'?groupByDay(filteredMessages):range==='week'?groupByWeek(filteredMessages):groupByMonth(filteredMessages);
-  const periods = Object.keys(groups).sort().slice(-10);
+  const count = range==='day'?30:(range==='week'?26:12);
+  const periods = Object.keys(groups).sort().slice(-count);
   const stats = periods.map(p=>({p, m:computeMetrics(groups[p])}));
   const container = document.getElementById('metric-range-table');
   if(!container) return;
@@ -520,7 +528,8 @@ function renderMetricChart(){
   const metric = document.getElementById('metric-select').value;
   const range = document.getElementById('metric-chart-range').value;
   const groups = range==='day'?groupByDay(filteredMessages):range==='week'?groupByWeek(filteredMessages):groupByMonth(filteredMessages);
-  const periods = Object.keys(groups).sort();
+  const count = range==='day'?30:(range==='week'?26:12);
+  const periods = Object.keys(groups).sort().slice(-count);
   const data = periods.map(p=>computeMetrics(groups[p])[metric]);
   if(charts.metric) charts.metric.destroy();
   charts.metric = new Chart(document.getElementById('metric-chart'),{

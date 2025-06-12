@@ -7,7 +7,9 @@ h1 { text-align: center; }
 .upload-label:hover { background:#0069d9; }
 .section { margin-top: 40px; background:#fff; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); padding:20px; border-left:4px solid #cde; }
 .section:nth-of-type(even){background:#fdfdfd;border-left-color:#ecb;}
-.filters { margin-bottom: 20px; background:#fff;padding:10px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+.filters { margin-bottom: 20px; background:#fff;padding:10px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1); display:flex; gap:10px; flex-wrap:wrap; }
+.filters label{font-weight:bold;}
+.filters input[type="date"]{padding:2px 4px;border:1px solid #bbb;border-radius:4px;}
 .hidden { display: none; }
 .kpi-cards { display: flex; flex-wrap: wrap; gap: 10px; }
 .kpi-card { flex: 1 1 150px; border: 1px solid #ddd; padding: 15px; text-align: center; border-radius:8px; background:#fafafa; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
@@ -26,6 +28,7 @@ h1 { text-align: center; }
 .edge-table tr:hover{background:#f0f8ff;}
 .metric-table tr:nth-child(even){background:#f9f9f9;}
 .metric-table tr:hover{background:#eef;}
+#network-chart{height:400px;margin-top:10px;background:#fff;}
 @media (max-width: 600px) {
   .kpi-cards { flex-direction: column; }
 }
