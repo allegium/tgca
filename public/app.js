@@ -87,22 +87,33 @@ function computeKPIs() {
   const labels = metricLabels;
   const desc = metricDesc;
   const formulas = metricFormulas;
+  const kpiInfo = [
+    {key:'totalMessages',label:'\u0412\u0441\u0435\u0433\u043e \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0439',desc:'\u041e\u0431\u0449\u0435\u0435 \u0447\u0438\u0441\u043b\u043e \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0439',formula:'\u041f\u0440\u043e\u0441\u0442\u043e \u043f\u043e\u0434\u0441\u0447\u0435\u0442 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0439.'},
+    {key:'usersCount',label:'\u0423\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0435 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0438',desc:'\u0427\u0438\u0441\u043b\u043e \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0435\u0439, \u043d\u0430\u043f\u0438\u0441\u0430\u0432\u0448\u0438\u0445 \u043e\u0434\u043d\u043e \u0438\u043b\u0438 \u0431\u043e\u043b\u0435\u0435 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0439.',formula:'\u041a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u043e \u0443\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0445 \u0430\u0432\u0442\u043e\u0440\u043e\u0432.'},
+    {key:'dauAvg',label:'DAU',desc:'\u0421\u0440\u0435\u0434\u043d\u0435\u0435 \u0447\u0438\u0441\u043b\u043e \u0430\u043a\u0442\u0438\u0432\u043d\u044b\u0445 \u0432 \u0434\u0435\u043d\u044c',formula:'\u0421\u0440\u0435\u0434\u043d\u0435\u0435 \u043f\u043e \u0434\u043d\u044f\u043c \u043a\u043e\u043b\u0438\u0447\u0435\u0441\u0442\u0432\u0430 \u0443\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0445 \u0430\u0432\u0442\u043e\u0440\u043e\u0432.'},
+    {key:'wauAvg',label:'WAU',desc:'\u0421\u0440\u0435\u0434\u043d\u0435\u0435 \u0447\u0438\u0441\u043b\u043e \u0430\u043a\u0442\u0438\u0432\u043d\u044b\u0445 \u0432 \u043d\u0435\u0434\u0435\u043b\u044e',formula:'\u0421\u0440\u0435\u0434\u043d\u0435\u0435 \u043f\u043e \u043d\u0435\u0434\u0435\u043b\u044f\u043c \u0447\u0438\u0441\u043b\u0430 \u0430\u043a\u0442\u0438\u0432\u043d\u044b\u0445 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0435\u0439.'},
+    {key:'mauAvg',label:'MAU',desc:'\u0421\u0440\u0435\u0434\u043d\u0435\u0435 \u0447\u0438\u0441\u043b\u043e \u0430\u043a\u0442\u0438\u0432\u043d\u044b\u0445 \u0432 \u043c\u0435\u0441\u044f\u0446',formula:'\u0421\u0440\u0435\u0434\u043d\u0435\u0435 \u043f\u043e \u043c\u0435\u0441\u044f\u0446\u0430\u043c \u0447\u0438\u0441\u043b\u0430 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u043e\u0432.'},
+    {key:'stickiness',label:'Stickiness',desc:'\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u0435\u043b\u044c \u0440\u0435\u0433\u0443\u043b\u044f\u0440\u043d\u043e\u0441\u0442\u0438',formula:'DAU/MAU*100'},
+    {key:'retention.d1',label:'Avg D1 Retention',desc:'\u0414\u043e\u043b\u044f \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0435\u0439, \u0432\u0435\u0440\u043d\u0443\u0432\u0448\u0438\u0445\u0441\u044f \u0447\u0435\u0440\u0435\u0437 1 \u0434\u0435\u043d\u044c',formula:'(\u0427\u0438\u0441\u043b\u043e \u0432\u0435\u0440\u043d\u0443\u0432\u0448\u0438\u0445\u0441\u044f/\u0412\u0441\u0435)*100'},
+    {key:'retention.d7',label:'Avg D7 Retention',desc:'\u0414\u043e\u043b\u044f \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0435\u0439, \u0432\u043e\u0437\u0432\u0440\u0430\u0442\u0438\u0432\u0448\u0438\u0445\u0441\u044f \u0447\u0435\u0440\u0435\u0437 7 \u0434\u043d\u0435\u0439',formula:'(\u0427\u0438\u0441\u043b\u043e \u0432\u0435\u0440\u043d\u0443\u0432\u0448\u0438\u0445\u0441\u044f/\u0412\u0441\u0435)*100'},
+    {key:'retention.d30',label:'Avg D30 Retention',desc:'\u0414\u043e\u043b\u044f \u0432\u043e\u0437\u0432\u0440\u0430\u0442\u043e\u0432 \u0447\u0435\u0440\u0435\u0437 30 \u0434\u043d\u0435\u0439',formula:'(\u0427\u0438\u0441\u043b\u043e \u0432\u0435\u0440\u043d\u0443\u0432\u0448\u0438\u0445\u0441\u044f/\u0412\u0441\u0435)*100'},
+    {key:'retention.d90',label:'Avg D90 Retention',desc:'\u0414\u043e\u043b\u044f \u0432\u043e\u0437\u0432\u0440\u0430\u0442\u043e\u0432 \u0447\u0435\u0440\u0435\u0437 90 \u0434\u043d\u0435\u0439',formula:'(\u0427\u0438\u0441\u043b\u043e \u0432\u0435\u0440\u043d\u0443\u0432\u0448\u0438\u0445\u0441\u044f/\u0412\u0441\u0435)*100'},
+    {key:'lifetime',label:'Avg Lifetime(days)',desc:'\u0421\u0440\u0435\u0434\u043d\u044f\u044f \u0434\u043b\u0438\u0442\u0435\u043b\u044c\u043d\u043e\u0441\u0442\u044c \u0436\u0438\u0437\u043d\u0438 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f',formula:'\u0420\u0430\u0437\u043d\u0438\u0446\u0430 \u043c\u0435\u0436\u0434\u0443 \u043f\u0435\u0440\u0432\u044b\u043c \u0438 \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0438\u043c \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435\u043c, \u0441\u0440\u0435\u0434\u043d\u0435\u0435 \u043f\u043e \u0432\u0441\u0435\u043c \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f\u043c.'}
+  ];
   const kpiEl = document.getElementById('kpi');
-  kpiEl.innerHTML = `
-    <h2>\u041a\u043b\u044e\u0447\u0435\u0432\u044b\u0435 \u043c\u0435\u0442\u0440\u0438\u043a\u0438</h2>
-    <div class="kpi-cards">
-      <div class="kpi-card"><div class="num">${metrics.totalMessages}</div><div>\u0412\u0441\u0435\u0433\u043e \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0439</div></div>
-      <div class="kpi-card"><div class="num">${metrics.usersCount}</div><div>\u0423\u043d\u0438\u043a\u0430\u043b\u044c\u043d\u044b\u0445 \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u043e\u0432</div></div>
-      <div class="kpi-card"><div class="num">${metrics.dauAvg.toFixed(1)}</div><div>DAU</div></div>
-      <div class="kpi-card"><div class="num">${metrics.wauAvg.toFixed(1)}</div><div>WAU</div></div>
-      <div class="kpi-card"><div class="num">${metrics.mauAvg.toFixed(1)}</div><div>MAU</div></div>
-      <div class="kpi-card"><div class="num">${metrics.stickiness}%</div><div>Stickiness</div></div>
-      <div class="kpi-card"><div class="num">${metrics.retention.d1}%</div><div>Avg D1 Retention</div></div>
-      <div class="kpi-card"><div class="num">${metrics.retention.d7}%</div><div>Avg D7 Retention</div></div>
-      <div class="kpi-card"><div class="num">${metrics.retention.d30}%</div><div>Avg D30 Retention</div></div>
-      <div class="kpi-card"><div class="num">${metrics.retention.d90}%</div><div>Avg D90 Retention</div></div>
-      <div class="kpi-card"><div class="num">${metrics.lifetime}</div><div>Avg Lifetime(days)</div></div>
-    </div>`;
+  let kpiHtml = '<h2>\u041a\u043b\u044e\u0447\u0435\u0432\u044b\u0435 \u043c\u0435\u0442\u0440\u0438\u043a\u0438</h2><div class="kpi-cards">';
+  function formatVal(key){
+    if(key.startsWith('retention.')) return metrics.retention[key.split('.')[1]] + '%';
+    if(key==='dauAvg'||key==='wauAvg'||key==='mauAvg') return metrics[key].toFixed(1);
+    if(key==='stickiness') return metrics.stickiness + '%';
+    return metrics[key];
+  }
+  kpiInfo.forEach(def=>{
+    const tip=[def.desc,def.formula].filter(Boolean).join(' ');
+    kpiHtml += `<div class="kpi-card"><div class="num">${formatVal(def.key)}</div><div>${def.label} <span class="info" title="${tip}">?</span></div></div>`;
+  });
+  kpiHtml += '</div>';
+  kpiEl.innerHTML = kpiHtml;
 
   const metricsEl = document.getElementById('metrics');
   metricsEl.innerHTML = '<h2>\u041c\u0435\u0442\u0440\u0438\u043a\u0438</h2>';
@@ -528,7 +539,7 @@ function renderMetricRange(range){
                 : range==='month' ? groupByMonth(filteredMessages)
                 : range==='year' ? groupByYear(filteredMessages)
                 : groupByMonth(filteredMessages);
-  const count = range==='day' ? 33 : (range==='month' ? 12 : Object.keys(groups).length);
+  const count = range==='day' ? 30 : (range==='month' ? 12 : Math.min(Object.keys(groups).length,5));
   const periods = Object.keys(groups).sort().slice(-count);
   const stats = periods.map(p=>({p, m:computeMetrics(groups[p])}));
   const container = document.getElementById('metric-range-table');
@@ -548,7 +559,7 @@ function renderMetricChart(){
                 : range==='month' ? groupByMonth(filteredMessages)
                 : range==='year' ? groupByYear(filteredMessages)
                 : groupByMonth(filteredMessages);
-  const count = range==='day' ? 30 : (range==='month' ? 12 : Object.keys(groups).length);
+  const count = range==='day' ? 30 : (range==='month' ? 12 : Math.min(Object.keys(groups).length,5));
   const periods = Object.keys(groups).sort().slice(-count);
   const data = periods.map(p=>computeMetrics(groups[p])[metric]);
   if(charts.metric) charts.metric.destroy();
@@ -560,7 +571,7 @@ function renderMetricChart(){
 }
 
 function drawWords(){
-  const stop=['и','в','не','на','я','что','быть','с','он','а','это','как','то','этот','по','к','но','они','мы','она','который','из','у','свой','вы','весь','за','для','от','о','так','мочь','все','ты','—','же','год','один','такой','тот','или','если','только','его','бы','себя'];
+  const stop=['и','в','не','на','я','что','быть','с','он','а','это','как','то','этот','по','к','но','они','мы','она','который','из','у','свой','вы','весь','за','для','от','о','так','мочь','все','ты','—','же','год','один','такой','тот','или','если','только','его','бы','себя','кто','там','мне','вообще','можно','где','еще','уже','будет','этого','есть','себе','было'];
   const pronouns=['я','ты','вы','мы','он','она','оно','они','мой','моя','моё','мои','твой','твоя','твоё','твои','наш','наша','наше','наши','ваш','ваша','ваше','ваши','его','её','их','кто','что','сам','себя'];
   const noun=/(а|я|о|е|ы|и|у|ю|ь|ей|ой|ам|ям|ом|ем|ах|ях)$/;
   const adj=/(ый|ий|ой|ая|яя|ое|ее|ые|ие|ого|его|ому|ему|ым|им|ых|их)$/;
