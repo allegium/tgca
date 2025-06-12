@@ -3,7 +3,8 @@ body { font-family: Arial, sans-serif; margin: 0; padding: 0; background:#f5f7fa
 h1 { text-align: center; }
 .upload-area { border: 2px dashed #ccc; padding: 40px; text-align: center; border-radius:8px; background:#fafafa; }
 .upload-area.dragover { background: #f0f0f0; }
-.section { margin-top: 40px; background:#fff; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); padding:20px; }
+.section { margin-top: 40px; background:#fff; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); padding:20px; border-left:4px solid #cde; }
+.section:nth-of-type(even){background:#fdfdfd;border-left-color:#ecb;}
 .filters { margin-bottom: 20px; }
 .hidden { display: none; }
 .kpi-cards { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -12,8 +13,13 @@ h1 { text-align: center; }
 .bar-horizontal { display: flex; align-items: center; margin-bottom: 5px; }
 .bar-horizontal .label { width: 120px; }
 .bar-horizontal .bar { flex-grow: 1; height: 20px; background: #4caf50; margin-left: 5px; border-radius:10px; }
-.heatmap { display: grid; grid-template-columns: repeat(24, 1fr); grid-gap: 2px; }
-.heatmap div { height: 20px; }
+.heatmap { overflow-x:auto; }
+.heat-table{border-collapse:collapse;font-size:10px;margin-top:10px;}
+.heat-table th,.heat-table td{border:1px solid #eee;width:20px;height:20px;text-align:center;padding:0;}
+.heat-cell{cursor:pointer;}
+.metric-table,.edge-table,.period-metrics{width:100%;border-collapse:collapse;margin-top:10px;}
+.metric-table th,.metric-table td,.edge-table th,.edge-table td,.period-metrics th,.period-metrics td{border:1px solid #ccc;padding:4px;text-align:center;}
+.edge-table tr:hover{background:#f0f8ff;}
 @media (max-width: 600px) {
   .kpi-cards { flex-direction: column; }
 }
