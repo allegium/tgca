@@ -122,12 +122,12 @@ function computeKPIs() {
   });
   metricsEl.innerHTML += `<table class="metric-table">${rows}</table>`;
 
-  metricsEl.innerHTML += `<div class="metric-range"><label for=\"metric-range-select\">\u041f\u0435\u0440\u0438\u043e\u0434</label> <select id=\"metric-range-select\"><option value=\"day\">\u0414\u0435\u043d\u044c</option><option value=\"week\">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value=\"month\">\u041c\u0435\u0441\u044f\u0446</option></select><div id=\"metric-range-table\"></div></div>`;
+  metricsEl.innerHTML += `<div class="metric-range"><label for=\"metric-range-select\">\u041f\u0435\u0440\u0438\u043e\u0434</label> <select id=\"metric-range-select\"><option value=\"day\">\u0414\u0435\u043d\u044c</option><option value=\"month\">\u041c\u0435\u0441\u044f\u0446</option><option value=\"year\">\u0413\u043e\u0434</option></select><div id=\"metric-range-table\"></div></div>`;
   document.getElementById('metric-range-select').addEventListener('change', e=>renderMetricRange(e.target.value));
   renderMetricRange('day');
 
   let metricOptions = metricOrder.map(k=>`<option value=\"${k}\">${labels[k]}</option>`).join('');
-  metricsEl.innerHTML += `<div class="chart-container"><label>\u041c\u0435\u0442\u0440\u0438\u043a\u0430 <select id=\"metric-select\">${metricOptions}</select></label><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id=\"metric-chart-range\"><option value=\"day\">\u0414\u0435\u043d\u044c</option><option value=\"week\">\u041d\u0435\u0434\u0435\u043b\u044f</option><option value=\"month\">\u041c\u0435\u0441\u044f\u0446</option></select></label><canvas id=\"metric-chart\"></canvas></div>`;
+  metricsEl.innerHTML += `<div class="chart-container"><label>\u041c\u0435\u0442\u0440\u0438\u043a\u0430 <select id=\"metric-select\">${metricOptions}</select></label><label>\u041f\u0435\u0440\u0438\u043e\u0434 <select id=\"metric-chart-range\"><option value=\"day\">\u0414\u0435\u043d\u044c</option><option value=\"month\">\u041c\u0435\u0441\u044f\u0446</option><option value=\"year\">\u0413\u043e\u0434</option></select></label><canvas id=\"metric-chart\"></canvas></div>`;
   document.getElementById('metric-select').addEventListener('change',()=>renderMetricChart());
   document.getElementById('metric-chart-range').addEventListener('change',()=>renderMetricChart());
   renderMetricChart();
@@ -280,6 +280,15 @@ function groupByMonth(msgs) {
     const d = m.date.slice(0,7);
     acc[d] = acc[d] || [];
     acc[d].push(m);
+    return acc;
+  },{});
+}
+
+function groupByYear(msgs) {
+  return msgs.reduce((acc,m)=>{
+    const y = m.date.slice(0,4);
+    acc[y] = acc[y] || [];
+    acc[y].push(m);
     return acc;
   },{});
 }
@@ -514,8 +523,11 @@ function computeMetrics(msgs){
 }
 
 function renderMetricRange(range){
-  const groups = range==='day'?groupByDay(filteredMessages):range==='week'?groupByWeek(filteredMessages):groupByMonth(filteredMessages);
-  const count = range==='day'?33:(range==='week'?26:12);
+  const groups = range==='day' ? groupByDay(filteredMessages)
+                : range==='month' ? groupByMonth(filteredMessages)
+                : range==='year' ? groupByYear(filteredMessages)
+                : groupByMonth(filteredMessages);
+  const count = range==='day' ? 33 : (range==='month' ? 12 : Object.keys(groups).length);
   const periods = Object.keys(groups).sort().slice(-count);
   const stats = periods.map(p=>({p, m:computeMetrics(groups[p])}));
   const container = document.getElementById('metric-range-table');
@@ -531,8 +543,11 @@ function renderMetricRange(range){
 function renderMetricChart(){
   const metric = document.getElementById('metric-select').value;
   const range = document.getElementById('metric-chart-range').value;
-  const groups = range==='day'?groupByDay(filteredMessages):range==='week'?groupByWeek(filteredMessages):groupByMonth(filteredMessages);
-  const count = range==='day'?30:(range==='week'?26:12);
+  const groups = range==='day' ? groupByDay(filteredMessages)
+                : range==='month' ? groupByMonth(filteredMessages)
+                : range==='year' ? groupByYear(filteredMessages)
+                : groupByMonth(filteredMessages);
+  const count = range==='day' ? 30 : (range==='month' ? 12 : Object.keys(groups).length);
   const periods = Object.keys(groups).sort().slice(-count);
   const data = periods.map(p=>computeMetrics(groups[p])[metric]);
   if(charts.metric) charts.metric.destroy();
@@ -544,7 +559,7 @@ function renderMetricChart(){
 }
 
 function drawWords(){
-  const stop=['и','в','во','не','а','но','как','так','же','бы','для','за','по','из','у','к','о','с','на','там','тут','да','нет'];
+  const stop=['и','в','не','на','я','что','быть','с','он','а','это','как','то','этот','по','к','но','они','мы','она','который','из','у','свой','вы','весь','за','для','от','о','так','мочь','все','ты','—','же','год','один','такой','тот','или','если','только','его','бы','себя'];
   const pronouns=['я','ты','вы','мы','он','она','оно','они','мой','моя','моё','мои','твой','твоя','твоё','твои','наш','наша','наше','наши','ваш','ваша','ваше','ваши','его','её','их','кто','что','сам','себя'];
   const noun=/(а|я|о|е|ы|и|у|ю|ь|ей|ой|ам|ям|ом|ем|ах|ях)$/;
   const adj=/(ый|ий|ой|ая|яя|ое|ее|ые|ие|ого|его|ому|ему|ым|им|ых|их)$/;
@@ -560,11 +575,18 @@ function drawWords(){
     if(!words) return;
     words.forEach(w=>{if(!stop.includes(w)&&allowed(w)) freq[w]=(freq[w]||0)+1;});
   });
-  const top=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,20);
+  const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]);
   const el=document.getElementById('words');
-  el.innerHTML='<h2>\u041f\u043e\u043f\u0443\u043b\u044f\u0440\u043d\u044b\u0435 \u0441\u043b\u043e\u0432\u0430</h2>';
-  let table='<table class="metric-table"><tr><th>\u0421\u043b\u043e\u0432\u043e</th><th>\u0427\u0430\u0441\u0442\u043e\u0442\u0430</th></tr>';
-  top.forEach(([w,c])=>{table+=`<tr><td>${w}</td><td>${c}</td></tr>`;});
-  table+='</table>';
-  el.innerHTML+=table;
+  el.innerHTML='<h2>\u041f\u043e\u043f\u0443\u043b\u044f\u0440\u043d\u044b\u0435 \u0441\u043b\u043e\u0432\u0430</h2>'+
+    '<label>\u0422\u043e\u043f <select id="word-top-select"><option value="10">10</option><option value="30">30</option><option value="50">50</option></select></label><div id="word-table"></div>';
+  function render(count){
+    const top=sorted.slice(0,count);
+    let table='<table class="metric-table"><tr><th>\u0421\u043b\u043e\u0432\u043e</th><th>\u0427\u0430\u0441\u0442\u043e\u0442\u0430</th></tr>';
+    top.forEach(([w,c])=>{table+=`<tr><td>${w}</td><td>${c}</td></tr>`;});
+    table+='</table>';
+    document.getElementById('word-table').innerHTML=table;
+  }
+  const select=document.getElementById('word-top-select');
+  select.addEventListener('change',e=>render(parseInt(e.target.value)));
+  render(10);
 }
