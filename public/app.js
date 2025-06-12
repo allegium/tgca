@@ -64,6 +64,7 @@ function renderDashboard() {
   drawActivity();
   drawEngagement();
   drawMembers();
+  drawNetwork();
 }
 
 function computeKPIs() {
@@ -77,8 +78,81 @@ function computeKPIs() {
   const wauAvg = avg(Object.values(wau).map(w => new Set(w.map(m => m.from_id || m.from)).size));
   const mauAvg = avg(Object.values(mau).map(m => new Set(m.map(mes => mes.from_id || mes.from)).size));
   const stickiness = mauAvg ? (dauAvg / mauAvg * 100).toFixed(1) : 0;
-  const retention = calcRetention();
+  const retention = calcRetention2(filteredMessages);
   const lifetime = calcLifetime();
+
+  const text = t => (typeof t === 'string' ? t : Array.isArray(t) ? t.map(p => typeof p === 'string' ? p : p.text || '').join('') : '');
+
+  const mediaCount = filteredMessages.filter(m => m.media_type).length;
+  const linkCount = filteredMessages.filter(m => /https?:\/\//i.test(text(m.text))).length;
+  const lengths = filteredMessages.map(m => text(m.text).length);
+  const wordLengths = filteredMessages.map(m => text(m.text).split(/\s+/).filter(Boolean).length);
+  const avgChars = avg(lengths).toFixed(1);
+  const avgWords = avg(wordLengths).toFixed(1);
+  const longMsgs = lengths.filter(l => l > 500).length;
+  const emojiFreq = filteredMessages.reduce((acc,m)=>acc+(text(m.text).match(/\p{Emoji}/gu)||[]).length,0);
+  const forwarded = filteredMessages.filter(m => m.forwarded_from).length;
+  const replyMsgs = filteredMessages.filter(m => m.reply_to_message_id).length;
+  const mentionCount = filteredMessages.reduce((acc,m)=>acc+(text(m.text).match(/@\w+/g)||[]).length,0);
+  const questionCount = filteredMessages.filter(m => text(m.text).includes('?')).length;
+
+  const msgById = {};
+  filteredMessages.forEach(m => { if(m.id) msgById[m.id]=m; });
+  const threadStats = {};
+  const repliedIds = new Set();
+  filteredMessages.forEach(m => {
+    if(m.reply_to_message_id && msgById[m.reply_to_message_id]){
+      repliedIds.add(m.reply_to_message_id);
+      const parent = msgById[m.reply_to_message_id];
+      const tid = m.reply_to_message_id;
+      const date = new Date(m.date);
+      if(!threadStats[tid]){
+        threadStats[tid] = {count:2, first:new Date(parent.date), firstReply:date, last:date};
+      } else {
+        threadStats[tid].count++;
+        if(date < threadStats[tid].firstReply) threadStats[tid].firstReply = date;
+        if(date > threadStats[tid].last) threadStats[tid].last = date;
+      }
+    }
+  });
+  const threadArr = Object.values(threadStats);
+  const avgThreadDepth = threadArr.length ? avg(threadArr.map(t=>t.count)).toFixed(1) : 0;
+  const avgThreadLifetime = threadArr.length ? avg(threadArr.map(t=>diffMinutes(t.first, t.last))).toFixed(1) : 0;
+  const avgTimeFirstReply = threadArr.length ? avg(threadArr.map(t=>diffMinutes(t.first, t.firstReply))).toFixed(1) : 0;
+  const msgsNoReplies = filteredMessages.filter(m => !repliedIds.has(m.id)).length;
+  const shareNoReplies = totalMessages ? (msgsNoReplies/totalMessages*100).toFixed(1) : 0;
+
+  const edges = {};
+  const userStats = {};
+  filteredMessages.forEach(m=>{
+    const u = m.from || 'Unknown';
+    userStats[u] = userStats[u] || {messages:0,replies:0,connections:new Set()};
+    userStats[u].messages++;
+  });
+  filteredMessages.forEach(m=>{
+    if(m.reply_to_message_id && msgById[m.reply_to_message_id]){
+      const from = m.from || 'Unknown';
+      const to = msgById[m.reply_to_message_id].from || 'Unknown';
+      const key = `${from}→${to}`;
+      edges[key] = (edges[key]||0)+1;
+      userStats[to].replies++;
+      userStats[from].connections.add(to);
+      userStats[to].connections.add(from);
+    }
+  });
+  const edgeList = Object.entries(edges).map(([k,v])=>{ const [f,t]=k.split('→'); return {from:f,to:t,count:v};});
+  const uniquePairs = edgeList.length;
+  const density = users.size>1 ? (uniquePairs/(users.size*(users.size-1))).toFixed(3) : 0;
+  const leaderCentrality = Object.entries(userStats).map(([u,s])=>({user:u,replies:s.replies})).sort((a,b)=>b.replies-a.replies).slice(0,5);
+  const lowActivity = Object.values(userStats).filter(s=>s.messages<=2).length;
+  const active5 = Object.values(userStats).filter(s=>s.connections.size>=5).length;
+
+  window.edgeList = edgeList;
+  window.metrics = {
+    mediaCount,linkCount,avgChars,avgWords,longMsgs,emojiFreq,forwarded,replyMsgs,
+    mentionCount,avgTimeFirstReply,shareNoReplies,avgThreadDepth,avgThreadLifetime,
+    uniquePairs,density,leaderCentrality,lowActivity,active5,questionCount
+  };
 
   const kpiEl = document.getElementById('kpi');
   kpiEl.innerHTML = `
@@ -92,8 +166,32 @@ function computeKPIs() {
       <div class="kpi-card"><div class="num">${stickiness}%</div><div>Stickiness</div></div>
       <div class="kpi-card"><div class="num">${retention.d1}%</div><div>Avg D1 Retention</div></div>
       <div class="kpi-card"><div class="num">${retention.d7}%</div><div>Avg D7 Retention</div></div>
-      <div class="kpi-card"><div class="num">${lifetime}</div><div>Avg Lifetime (days)</div></div>
-    </div>`;
+      <div class="kpi-card"><div class="num">${retention.d30}%</div><div>Avg D30 Retention</div></div>
+      <div class="kpi-card"><div class="num">${retention.d90}%</div><div>Avg D90 Retention</div></div>
+      <div class="kpi-card"><div class="num">${lifetime}</div><div>Avg Lifetime(days)</div></div>
+    </div>
+    <table class="metric-table">
+      <tr><th>Metric</th><th>Value</th></tr>
+      <tr><td>Messages with media</td><td>${mediaCount}</td></tr>
+      <tr><td>Messages with links</td><td>${linkCount}</td></tr>
+      <tr><td>Average length (chars)</td><td>${avgChars}</td></tr>
+      <tr><td>Average length (words)</td><td>${avgWords}</td></tr>
+      <tr><td>Long messages >500</td><td>${longMsgs}</td></tr>
+      <tr><td>Emoji count</td><td>${emojiFreq}</td></tr>
+      <tr><td>Forwarded messages</td><td>${forwarded}</td></tr>
+      <tr><td>Reply messages</td><td>${replyMsgs}</td></tr>
+      <tr><td>User mentions</td><td>${mentionCount}</td></tr>
+      <tr><td>Questions</td><td>${questionCount}</td></tr>
+      <tr><td>Avg time to first reply (min)</td><td>${avgTimeFirstReply}</td></tr>
+      <tr><td>Share without replies</td><td>${shareNoReplies}%</td></tr>
+      <tr><td>Avg thread depth</td><td>${avgThreadDepth}</td></tr>
+      <tr><td>Avg thread lifetime (min)</td><td>${avgThreadLifetime}</td></tr>
+      <tr><td>Active threads</td><td>${threadArr.length}</td></tr>
+      <tr><td>Network density</td><td>${density}</td></tr>
+      <tr><td>Unique reply pairs</td><td>${uniquePairs}</td></tr>
+      <tr><td>Low activity users</td><td>${lowActivity}</td></tr>
+      <tr><td>Active users 5+ ties</td><td>${active5}</td></tr>
+    </table>`;
 }
 
 function drawActivity() {
@@ -164,14 +262,14 @@ function drawActivity() {
 }
 
 function drawEngagement() {
-  const reactions = { '👍': 0, '❤️': 0, '🔥': 0, '😂': 0 };
+  const reactions = {};
   let replyCount = 0;
   const dailyReplies = {};
   const dailyReactions = {};
   filteredMessages.forEach(m => {
     if (m.reactions) {
       m.reactions.forEach(r => {
-        if (reactions.hasOwnProperty(r.reaction)) reactions[r.reaction]++;
+        reactions[r.reaction] = (reactions[r.reaction] || 0) + 1;
         const day = m.date.slice(0,10);
         dailyReactions[day] = (dailyReactions[day] || 0) + 1;
       });
@@ -196,11 +294,13 @@ function drawEngagement() {
     <p>Engagement Rate: <strong>${engagementRate}%</strong></p>`;
 
   if (charts.reactions) charts.reactions.destroy();
+  const rLabels = Object.keys(reactions);
+  const colors = rLabels.map((_,i)=>`hsl(${i*40},70%,60%)`);
   charts.reactions = new Chart(document.getElementById('reaction-chart'), {
     type: 'doughnut',
     data: {
-      labels: Object.keys(reactions),
-      datasets: [{ data: Object.values(reactions), backgroundColor: ['#4caf50','#e91e63','#ff9800','#03a9f4'] }]
+      labels: rLabels,
+      datasets: [{ data: Object.values(reactions), backgroundColor: colors }]
     }
   });
 
@@ -247,6 +347,11 @@ function drawMembers() {
     },
     options: { scales: { x: { title:{display:true,text:'Messages'}}, y:{ title:{display:true,text:'Reactions'} } } }
   });
+}
+
+function drawNetwork(){
+  const el = document.getElementById('network');
+  el.innerHTML = '<h2>Reply Network (edge list)</h2><pre>'+JSON.stringify(window.edgeList.slice(0,50),null,2)+'</pre>';
 }
 
 function renderHorizontalBar(container, labels, data, title) {
@@ -315,6 +420,35 @@ function calcRetention() {
   return { d1: (avg(d1)*100).toFixed(1), d7: (avg(d7)*100).toFixed(1) };
 }
 
+function calcRetention2(msgs){
+  const users = {};
+  msgs.forEach(m=>{
+    const u = m.from_id || m.from;
+    const d = new Date(m.date);
+    users[u] = users[u] || [];
+    users[u].push(d);
+  });
+  const res = {1:0,7:0,30:0,90:0};
+  let count = 0;
+  Object.values(users).forEach(dates=>{
+    dates.sort((a,b)=>a-b);
+    const first = dates[0];
+    const check = {1:false,7:false,30:false,90:false};
+    dates.forEach(dt=>{
+      const diff = diffDays(first,dt);
+      if(res.hasOwnProperty(diff)) check[diff]=true;
+    });
+    Object.keys(check).forEach(k=>{ if(check[k]) res[k]++; });
+    count++;
+  });
+  return {
+    d1: (res[1]/count*100).toFixed(1),
+    d7: (res[7]/count*100).toFixed(1),
+    d30: (res[30]/count*100).toFixed(1),
+    d90: (res[90]/count*100).toFixed(1)
+  };
+}
+
 function calcLifetime() {
   const users = {};
   filteredMessages.forEach(m => {
@@ -329,3 +463,5 @@ function calcLifetime() {
 }
 
 function diffDays(a,b){return Math.round((b-a)/86400000);}
+
+function diffMinutes(a,b){return Math.round((b-a)/60000);}
